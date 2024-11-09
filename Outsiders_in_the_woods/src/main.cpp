@@ -80,6 +80,8 @@ glm::vec3 colorAmbiente = glm::vec3(1.0);
 glm::vec3 colorDifuso = glm::vec3(1.0);
 glm::vec3 colorEspecular = glm::vec3(1.0);
 glm::vec3 direccionLuz = glm::vec3(1.0);
+bool isLampON = false;
+bool enableActionKeyL = false;
 
 // Definición de los modelos ======================================
 // Aquí se definen los modelos, matrices y variables requeridas por
@@ -958,6 +960,17 @@ bool processInput(bool continueApplication)
 		enableActionKeyC = true;
 	}
 
+	// Activar la linterna
+	if (enableActionKeyL && glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+	{
+		enableActionKeyL = false;
+		isLampON = !isLampON;
+	}
+	else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE)
+	{
+		enableActionKeyL = true;
+	}
+
 	// TEMPORAL. Cambiar la iluminación
 	if (enableActionKeyT && glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
 	{
@@ -1210,7 +1223,6 @@ void applicationLoop()
 
 	// Posicionamiento del personaje principal
 	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, 0.0f));
-	modelMatrixCazador = glm::rotate(modelMatrixCazador, glm::radians(180.0f), glm::vec3(0, 1, 0));
 
 	// modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
 
@@ -1329,31 +1341,38 @@ void applicationLoop()
 		/*******************************************
 		 * Propiedades SpotLights
 		 *******************************************/
+	
 		// Linterna del personaje principal
-		shaderMulLighting.setInt("spotLightCount", 1);
-		shaderTerrain.setInt("spotLightCount", 1);
-		glm::vec3 spotPosition = glm::vec3(modelMatrixCazador * glm::vec4(1.0, 1.0, 1.0, 1.0));
-		shaderMulLighting.setVectorFloat3("spotLights[0].light.ambient", glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-		shaderMulLighting.setVectorFloat3("spotLights[0].light.diffuse", glm::value_ptr(glm::vec3(0.2, 0.2, 0.2)));
-		shaderMulLighting.setVectorFloat3("spotLights[0].light.specular", glm::value_ptr(glm::vec3(0.3, 0.3, 0.3)));
-		shaderMulLighting.setVectorFloat3("spotLights[0].position", glm::value_ptr(spotPosition));
-		shaderMulLighting.setVectorFloat3("spotLights[0].direction", value_ptr(modelCazador.getOrientation()));
-		shaderMulLighting.setFloat("spotLights[0].constant", 1.0);
-		shaderMulLighting.setFloat("spotLights[0].linear", 0.07);
-		shaderMulLighting.setFloat("spotLights[0].quadratic", 0.03);
-		shaderMulLighting.setFloat("spotLights[0].cutOff", cos(glm::radians(12.5f)));
-		shaderMulLighting.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
+		if (isLampON) {
+			shaderMulLighting.setInt("spotLightCount", 1);
+			shaderTerrain.setInt("spotLightCount", 1);
 
-		shaderTerrain.setVectorFloat3("spotLights[0].light.ambient", glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
-		shaderTerrain.setVectorFloat3("spotLights[0].light.diffuse", glm::value_ptr(glm::vec3(0.2, 0.2, 0.2)));
-		shaderTerrain.setVectorFloat3("spotLights[0].light.specular", glm::value_ptr(glm::vec3(0.3, 0.3, 0.3)));
-		shaderTerrain.setVectorFloat3("spotLights[0].position", glm::value_ptr(spotPosition));
-		shaderTerrain.setVectorFloat3("spotLights[0].direction", glm::value_ptr(modelCazador.getOrientation()));
-		shaderTerrain.setFloat("spotLights[0].constant", 1.0);
-		shaderTerrain.setFloat("spotLights[0].linear", 0.07);
-		shaderTerrain.setFloat("spotLights[0].quadratic", 0.03);
-		shaderTerrain.setFloat("spotLights[0].cutOff", cos(glm::radians(12.5f)));
-		shaderTerrain.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
+			glm::vec3 spotPosition = glm::vec3(modelMatrixCazador * glm::vec4(0, 0.5, 1, 1.0));
+			shaderMulLighting.setVectorFloat3("spotLights[0].light.ambient", glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+			shaderMulLighting.setVectorFloat3("spotLights[0].light.diffuse", glm::value_ptr(glm::vec3(0.8)));
+			shaderMulLighting.setVectorFloat3("spotLights[0].light.specular", glm::value_ptr(glm::vec3(0.8)));
+			shaderMulLighting.setVectorFloat3("spotLights[0].position", glm::value_ptr(spotPosition));
+			shaderMulLighting.setVectorFloat3("spotLights[0].direction", value_ptr(modelMatrixCazador[2]));
+			shaderMulLighting.setFloat("spotLights[0].constant", 1.0);
+			shaderMulLighting.setFloat("spotLights[0].linear", 0.07);
+			shaderMulLighting.setFloat("spotLights[0].quadratic", 0.03);
+			shaderMulLighting.setFloat("spotLights[0].cutOff", cos(glm::radians(14.0f)));
+			shaderMulLighting.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
+
+			shaderTerrain.setVectorFloat3("spotLights[0].light.ambient", glm::value_ptr(glm::vec3(1.0, 1.0, 1.0)));
+			shaderTerrain.setVectorFloat3("spotLights[0].light.diffuse", glm::value_ptr(glm::vec3(0.8)));
+			shaderTerrain.setVectorFloat3("spotLights[0].light.specular", glm::value_ptr(glm::vec3(0.8)));
+			shaderTerrain.setVectorFloat3("spotLights[0].position", glm::value_ptr(spotPosition));
+			shaderTerrain.setVectorFloat3("spotLights[0].direction", glm::value_ptr(modelMatrixCazador[2]));
+			shaderTerrain.setFloat("spotLights[0].constant", 1.0);
+			shaderTerrain.setFloat("spotLights[0].linear", 0.07);
+			shaderTerrain.setFloat("spotLights[0].quadratic", 0.03);
+			shaderTerrain.setFloat("spotLights[0].cutOff", cos(glm::radians(14.0f)));
+			shaderTerrain.setFloat("spotLights[0].outerCutOff", cos(glm::radians(15.0f)));
+		} else {
+			shaderMulLighting.setInt("spotLightCount", 0);
+			shaderTerrain.setInt("spotLightCount", 0);
+		}
 
 		/*******************************************
 		 * Propiedades PointLights
@@ -1614,13 +1633,13 @@ void applicationLoop()
 		 * Objetos animados por huesos
 		 * **************************************/
 		// Personaje principal
-		glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
+		/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
 		glm::vec3 ejex = glm::vec3(modelMatrixCazador[0]);
 		glm::vec3 ejez = glm::normalize(glm::cross(ejex, ejey));
 		ejex = glm::normalize(glm::cross(ejey, ejez));
 		modelMatrixCazador[0] = glm::vec4(ejex, 0.0);
 		modelMatrixCazador[1] = glm::vec4(ejey, 0.0);
-		modelMatrixCazador[2] = glm::vec4(ejez, 0.0);
+		modelMatrixCazador[2] = glm::vec4(ejez, 0.0);*/
 		modelMatrixCazador[3][1] = -GRAVITY * tmv * tmv + 3.0 * tmv +
 								 terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
 		tmv = currTime - startTimeJump; // Incrementa el tmv desde que inicio.
@@ -1632,7 +1651,7 @@ void applicationLoop()
 		}
 		modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
 		glm::mat4 modelMatrixCazadorBody = glm::mat4(modelMatrixCazador);
-		modelMatrixCazadorBody = glm::scale(modelMatrixCazadorBody, glm::vec3(0.021f));
+		modelMatrixCazadorBody = glm::scale(modelMatrixCazadorBody, glm::vec3(0.1f));
 		modelCazador.setAnimationIndex(animationIndexCazador);
 		modelCazador.render(modelMatrixCazadorBody);
 		animationIndexCazador = 1;
@@ -1669,7 +1688,7 @@ void applicationLoop()
 		glCullFace(oldCullFaceMode);
 		glDepthFunc(oldDepthFuncMode);
 
-		// Creación de los colliders
+		// Creación de los colliders ========================================
 
 		// Colliders de la casa de campaña
 		glm::mat4 colliderMatrixCasaCamp = glm::mat4(modelMatrixCasaCamp);
@@ -1680,15 +1699,15 @@ void applicationLoop()
 		casaCampCollider.ratio = modelCasaCamp.getSbb().ratio * 0.8;
 		addOrUpdateColliders(collidersSBB, "casa_camp", casaCampCollider, modelMatrixCasaCamp);
 
-		/*glm::mat4 colliderMatrixDart = glm::mat4(modelMatrixDart);
-		AbstractModel::OBB dartCollider;
-		dartCollider.u = glm::quat_cast(modelMatrixDart);
-		colliderMatrixDart = glm::scale(colliderMatrixDart, glm::vec3(0.5)); // Es el escalamiento de dart
-		colliderMatrixDart = glm::translate(colliderMatrixDart,
-			modelDartLegoBody.getObb().c);
-		dartCollider.c = colliderMatrixDart[3];
-		dartCollider.e = modelDartLegoBody.getObb().e * glm::vec3(0.5);
-		addOrUpdateColliders(collidersOBB, "dart", dartCollider, modelMatrixDart);*/
+		// Collider del personaje principal
+		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
+		AbstractModel::OBB cazadorCollider;
+		colliderMatrixCazador = glm::scale(colliderMatrixCazador, glm::vec3(0, 0.1, 0));
+		colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
+		cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
+		cazadorCollider.c = colliderMatrixCazador[3];
+		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.015,0.02,0.01);
+		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
 		/*glm::mat4 colliderMatrixAircraft = glm::mat4(modelMatrixAircraft);
 		AbstractModel::OBB colliderAircraft;
@@ -1707,17 +1726,19 @@ void applicationLoop()
 		for (int i = 0; i < arbol1Position.size(); i++)
 		{
 			AbstractModel::OBB arbol1Collider;
-			glm::mat4 modelColliderMatrix = glm::mat4(1.0f);
-			modelColliderMatrix = glm::translate(modelColliderMatrix, arbol1Position[i]);
+			glm::mat4 ColliderMatrixArbol1 = glm::mat4(1.0f);
+			ColliderMatrixArbol1 = glm::translate(ColliderMatrixArbol1, arbol1Position[i]);
 			// modelColliderMatrix= glm::rotate(modelColliderMatrix, glm::radians(arbol1Orientation[i]), glm::vec3(0, 1, 0));
-			addOrUpdateColliders(collidersOBB, "arbol_1-" + std::to_string(i), arbol1Collider,
-								 modelColliderMatrix);
-			arbol1Collider.u = glm::quat_cast(modelColliderMatrix);
-			modelColliderMatrix = glm::scale(modelColliderMatrix, glm::vec3(1.0));
-			modelColliderMatrix = glm::translate(modelColliderMatrix, modelArbol1.getObb().c);
-			arbol1Collider.c = modelColliderMatrix[3];
+			
+			arbol1Collider.u = glm::quat_cast(ColliderMatrixArbol1);
+			ColliderMatrixArbol1 = glm::scale(ColliderMatrixArbol1, glm::vec3(1.0));
+			ColliderMatrixArbol1 = glm::translate(ColliderMatrixArbol1, modelArbol1.getObb().c);
+			arbol1Collider.c = ColliderMatrixArbol1[3];
 			arbol1Collider.e = modelArbol1.getObb().e * glm::vec3(0.1, 1.0, 0.1);
 			std::get<0>(collidersOBB.find("arbol_1-" + std::to_string(i))->second) = arbol1Collider;
+
+			addOrUpdateColliders(collidersOBB, "arbol_1-" + std::to_string(i), arbol1Collider,
+								 ColliderMatrixArbol1);
 		}
 		/*for(int i = 0; i < lamp2Position.size(); i++){
 			AbstractModel::OBB lampCollider;
@@ -1741,33 +1762,17 @@ void applicationLoop()
 			AbstractModel::OBB arbolOtonoCollider;
 			glm::mat4 modelColliderMatrix = glm::mat4(1.0f);
 			modelColliderMatrix = glm::translate(modelColliderMatrix, arbolOtonoPosition[i]);
-			addOrUpdateColliders(collidersOBB, "arbol_otono-" + std::to_string(i), arbolOtonoCollider,
-								 modelColliderMatrix);
+			
 			arbolOtonoCollider.u = glm::quat_cast(modelColliderMatrix);
 			modelColliderMatrix = glm::scale(modelColliderMatrix, glm::vec3(1.0));
 			modelColliderMatrix = glm::translate(modelColliderMatrix, modelArbolOtono.getObb().c);
 			arbolOtonoCollider.c = modelColliderMatrix[3];
 			arbolOtonoCollider.e = modelArbolOtono.getObb().e * glm::vec3(0.1, 1.0, 0.1);
 			std::get<0>(collidersOBB.find("arbol_otono-" + std::to_string(i))->second) = arbolOtonoCollider;
-		}
 
-		// Collider del personaje principal
-		AbstractModel::OBB CazadorCollider;
-		// La jerarquia de las transformaciones esta sobre la matrix local, que ya tiene
-		// un escalamiento, para evitar los escalmiento manuales.
-		float scaleX = glm::length(glm::vec3(modelMatrixCazadorBody[0]));
-		float scaleY = glm::length(glm::vec3(modelMatrixCazadorBody[1]));
-		float scaleZ = glm::length(glm::vec3(modelMatrixCazadorBody[2]));
-		glm::mat4 matrixCazadorCollider = glm::mat4(modelMatrixCazador);
-		matrixCazadorCollider = glm::rotate(matrixCazadorCollider, glm::radians(-90.0f), glm::vec3(1, 0, 0));
-		CazadorCollider.u = glm::quat_cast(matrixCazadorCollider);
-		matrixCazadorCollider = glm::scale(matrixCazadorCollider, glm::vec3(scaleX, scaleY, scaleZ));
-		matrixCazadorCollider = glm::translate(matrixCazadorCollider, modelCazador.getObb().c);
-		CazadorCollider.c = matrixCazadorCollider[3];
-		// Estas variables se utilizan para no colocar el escalmiento en duro.
-		CazadorCollider.e = modelCazador.getObb().e * glm::vec3(scaleX, scaleY, scaleZ) *
-						  glm::vec3(0.5, 1.0, 0.5);
-		addOrUpdateColliders(collidersOBB, "cazador", CazadorCollider, modelMatrixCazador);
+			addOrUpdateColliders(collidersOBB, "arbol_otono-" + std::to_string(i), arbolOtonoCollider,
+								 modelColliderMatrix);
+		}
 
 		// Pruebas de colisión
 		auto itOBBC = collidersOBB.begin();
