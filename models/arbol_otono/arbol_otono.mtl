@@ -1,0 +1,22 @@
+# Blender 4.2.1 LTS MTL File: 'arbol_otono.blend'
+# www.blender.org
+
+newmtl Bark
+Ns 1000.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd textures/bark_willow_diff_2k.jpeg
+
+newmtl Leaves
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Twig_Leaf_Long_Diffuse_C1-Twig_Leaf_Long_Opacity.png
+map_d textures/Twig_Leaf_Long_Diffuse_C1-Twig_Leaf_Long_Opacity.png
