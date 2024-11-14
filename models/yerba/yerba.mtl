@@ -1,0 +1,162 @@
+# Blender 4.2.1 LTS MTL File: 'yerba.blend'
+# www.blender.org
+
+newmtl Grass_C
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.001
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.002
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.003
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.004
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.005
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.006
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.007
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.008
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.009
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.010
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.011
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.012
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.013
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.014
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+
+newmtl Grass_C.015
+Ns 360.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+illum 2
+map_Kd textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png
+map_d textures/Grass_Clumps_C_2_png-Grass_Clumps_C_3_png.png

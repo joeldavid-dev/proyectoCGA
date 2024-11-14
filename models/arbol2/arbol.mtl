@@ -1,22 +1,122 @@
-# Blender 4.2.1 LTS MTL File: 'arbolesblend.blend'
+# Blender 4.2.1 LTS MTL File: 'arbol.blend'
 # www.blender.org
 
-newmtl hojas
+newmtl arbol
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
-Ni 1.450000
+Ni 1.500000
 illum 2
 map_Kd Texturas arbol/rama3.png
 map_d Texturas arbol/rama3.png
 
-newmtl madera
+newmtl arbol.002
 Ns 250.000000
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
-Ni 1.450000
-d 1.000000
+Ni 1.500000
 illum 2
-map_Kd Texturas arbol/bark_brown_02_diff_1k.jpg
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.003
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.004
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.005
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.006
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.007
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.008
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.009
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.010
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.011
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
+
+newmtl arbol.012
+Ns 250.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+illum 2
+map_Kd Texturas arbol/rama3.png
+map_d Texturas arbol/rama3.png
