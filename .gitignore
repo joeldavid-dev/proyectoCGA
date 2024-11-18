@@ -14,7 +14,7 @@ Release/*.pbd
 CGALib/ide/CGALib/Debug/*
 RemoteSystemsTempFiles/
 .metadata/
-bin/*
+bin/*.exe
 build/*
 
 Codigos python
