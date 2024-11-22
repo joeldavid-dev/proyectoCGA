@@ -102,6 +102,10 @@ glm::vec3 direccionLuz = glm::vec3(1.0);
 bool isLampON = false;
 bool enableActionKeyL = false;
 
+//camara primera persona
+bool isFirstPerson = false;
+bool enableActionKeyV = true;
+
 // Definición de los modelos ======================================
 // Aquí se definen los modelos, matrices y variables requeridas por
 // cada modelo.
@@ -195,7 +199,10 @@ std::vector<float> troncoOrientation = {
 // Personaje principal
 Model modelCazador;
 glm::mat4 modelMatrixCazador = glm::mat4(1.0f);
-int animationIndexCazador = 1;
+int animationIndexCazador = 0;
+
+Model modelGun;
+glm::mat4 modelMatrixGun = glm::mat4(1.0f);
 
 // Terrain model instance
 Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
@@ -359,8 +366,12 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	modelTronco.setShader(&shaderMulLighting);
 
 	// Personaje principal
-	modelCazador.loadModel("../models/amongUS/AmongUS.fbx");
+	modelCazador.loadModel("../models/swat/Swat.fbx");
 	modelCazador.setShader(&shaderMulLighting);
+
+	modelGun.loadModel("../models/arma/arma.fbx");
+	modelGun.setShader(&shaderMulLighting);
+	
 
 	// Terreno
 	terrain.init();
@@ -647,6 +658,7 @@ void destroy()
 	modelYerba.destroy();
 	modelTronco.destroy();
 	modelCazador.destroy();
+	modelGun.destroy();
 
 	// Terrains objects Delete
 	terrain.destroy();
@@ -730,6 +742,20 @@ bool processInput(bool continueApplication)
 		return false;
 	}
 
+	if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+		enableActionKeyV = false;
+		isFirstPerson = !isFirstPerson;
+		if (isFirstPerson) {
+			camera->setDistanceFromTarget(0.0f);
+		} else {
+			camera->setDistanceFromTarget(distanceFromTarget);
+		}
+	}
+	else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
+		enableActionKeyV = true;
+	}
+
+
 	// Movimientos del personaje principal con control de xbox
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE)
 	{
@@ -746,12 +772,12 @@ bool processInput(bool continueApplication)
 		if (fabs(axes[0]) > 0.2)
 		{
 			modelMatrixCazador = glm::rotate(modelMatrixCazador, glm::radians(-axes[0] * 0.5f), glm::vec3(0, 1, 0));
-			animationIndexCazador = 0;
+			animationIndexCazador = 1;
 		}
 		if (fabs(axes[1]) > 0.2)
 		{
 			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0, 0, -axes[1] * 0.1));
-			animationIndexCazador = 0;
+			animationIndexCazador = 1;
 		}
 		if (fabs(axes[2]) > 0.2)
 		{
@@ -1002,22 +1028,22 @@ bool processInput(bool continueApplication)
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::rotate(modelMatrixCazador, 0.02f, glm::vec3(0, 1, 0));
-		animationIndexCazador = 0;
+		animationIndexCazador = 1;
 	}
 	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::rotate(modelMatrixCazador, -0.02f, glm::vec3(0, 1, 0));
-		animationIndexCazador = 0;
+		animationIndexCazador = 1;
 	}
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
-		animationIndexCazador = 0;
+		animationIndexCazador = 1;
 	}
 	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
-		animationIndexCazador = 0;
+		animationIndexCazador = 1;
 	}
 
 	bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
@@ -1118,18 +1144,46 @@ void applicationLoop()
 		}*/
 
 		// seguimiento de la camara en tercera persona al personaje principal
-		axis = glm::axis(glm::quat_cast(modelMatrixCazador));
-		angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
-		target = modelMatrixCazador[3];
+		if (isFirstPerson) {
+			// Obtener la posición base del cazador
+			glm::vec3 position = glm::vec3(modelMatrixCazador[3]);
+			position.y += 2.05f; // Altura de los ojos
+			
+			// Ajustar el vector de dirección
+			glm::vec3 forward = glm::normalize(glm::vec3(modelMatrixCazador[2])); // Agregamos el negativo de nuevo
+			glm::vec3 target = position + (forward * 0.40f) ; // El target debe estar adelante de la posición
+			
+			// Configurar la cámara en primera persona
+			camera->setPosition(position);
+			camera->setCameraTarget(target); // Miramos hacia el punto adelante
+			camera->setDistanceFromTarget(0.1f);
+			
+			// Ajustar el ángulo para que coincida con la dirección de vista
+			glm::vec3 axis = glm::axis(glm::quat_cast(modelMatrixCazador));
+			float angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
+			if (std::isnan(angleTarget))
+				angleTarget = 0.0;
+			if (axis.y < 0)
+				angleTarget = -angleTarget;
+			//angleTarget += glm::radians(180.0f); // Agregar rotación de 180 grados
+			
+			camera->setAngleTarget(angleTarget);
+		} else {
+			// Código original para la cámara en tercera persona
+			axis = glm::axis(glm::quat_cast(modelMatrixCazador));
+			angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
+			target = modelMatrixCazador[3];
 
-		if (std::isnan(angleTarget))
-			angleTarget = 0.0;
-		if (axis.y < 0)
-			angleTarget = -angleTarget;
-		if (modelSelected == 1)
-			angleTarget -= glm::radians(90.0f);
-		camera->setCameraTarget(target);
-		camera->setAngleTarget(angleTarget);
+			if (std::isnan(angleTarget))
+				angleTarget = 0.0;
+			if (axis.y < 0)
+				angleTarget = -angleTarget;
+			if (modelSelected == 1)
+				angleTarget -= glm::radians(90.0f);
+			camera->setCameraTarget(target);
+			camera->setAngleTarget(angleTarget);
+		}
+
 		camera->updateCamera();
 		glm::mat4 view = camera->getViewMatrix();
 
@@ -1362,8 +1416,22 @@ void applicationLoop()
 		modelMatrixCazadorBody = glm::scale(modelMatrixCazadorBody, glm::vec3(0.1f));
 		modelCazador.setAnimationIndex(animationIndexCazador);
 		modelCazador.render(modelMatrixCazadorBody);
-		animationIndexCazador = 1;
+		animationIndexCazador = 0;
 
+		float gunOffsetX = 0.12f;    // Ajuste lateral
+		float gunOffsetY = 1.5f;     // Ajuste de altura
+		float gunOffsetZ = 0.2f;     // Ajuste frontal
+		float gunRotateY = 90.0f;    // Rotación horizontal
+		float gunRotateX = -15.0f;   // Inclinación
+		float gunScale = 0.02f;      // Escala
+
+		glm::mat4 modelMatrixGun = glm::mat4(modelMatrixCazador);
+		modelMatrixGun = glm::translate(modelMatrixGun, glm::vec3(gunOffsetX, gunOffsetY, gunOffsetZ));
+		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateY), glm::vec3(0, 1, 0));
+		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateX), glm::vec3(1, 0, 0));
+		modelMatrixGun = glm::scale(modelMatrixGun, glm::vec3(gunScale));
+
+		modelGun.render(modelMatrixGun);
 		/*modelMatrixCowboy[3][1] = terrain.getHeightTerrain(modelMatrixCowboy[3][0], modelMatrixCowboy[3][2]);
 		glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy);
 		modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody, glm::vec3(0.0021f));
