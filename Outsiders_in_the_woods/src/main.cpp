@@ -58,6 +58,8 @@ Shader shaderMulLighting;
 // Shader para el terreno
 Shader shaderTerrain;
 
+Shader shaderCrosshair;
+
 std::shared_ptr<Camera> camera(new ThirdPersonCamera());
 float distanceFromTarget = 7.0;
 
@@ -75,6 +77,7 @@ int lastMousePosY, offsetY = 0;
 //float rotBuzzHead = 0.0, rotBuzzLeftarm = 0.0, rotBuzzLeftForeArm = 0.0, rotBuzzLeftHand = 0.0;
 int modelSelected = 0;
 bool enableCountSelected = true;
+bool enableActionKeyF = true;
 
 // Variables to animations keyframes
 //bool saveFrame = false, availableSave = true;
@@ -199,7 +202,7 @@ std::vector<float> troncoOrientation = {
 // Personaje principal
 Model modelCazador;
 glm::mat4 modelMatrixCazador = glm::mat4(1.0f);
-int animationIndexCazador = 0;
+int animationIndexCazador = 1;
 
 Model modelGun;
 glm::mat4 modelMatrixGun = glm::mat4(1.0f);
@@ -209,7 +212,9 @@ Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
 
 GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
-GLuint skyboxTextureID;
+GLuint skyboxTextureID, crosshairTextureID;
+
+GLuint crosshairVAO, crosshairVBO;
 
 GLenum types[6] = {
 	GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -250,6 +255,21 @@ void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 void init(int width, int height, std::string strTitle, bool bFullScreen);
 void destroy();
 bool processInput(bool continueApplication = true);
+
+void renderCrosshair() {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, crosshairTextureID);
+    shaderCrosshair.setInt("crosshairTexture", 0);
+    
+    glBindVertexArray(crosshairVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+}
 
 // Implementacion de todas las funciones.
 void init(int width, int height, std::string strTitle, bool bFullScreen)
@@ -315,6 +335,29 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	//shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/multipleLights.fs");
 	shaderMulLighting.initialize("../Shaders/iluminacion_textura_animation.vs", "../Shaders/multipleLights.fs");
 	shaderTerrain.initialize("../Shaders/terrain.vs", "../Shaders/terrain.fs");
+	shaderCrosshair.initialize("../Shaders/crosshair.vs", "../Shaders/crosshair.fs");
+
+	float crosshairVertices[] = {
+        // Pos      // TexCoords
+        -0.05f,  0.05f, 0.0f, 0.0f, 1.0f,
+        -0.05f, -0.05f, 0.0f, 0.0f, 0.0f,
+         0.05f, -0.05f, 0.0f, 1.0f, 0.0f,
+
+        -0.05f,  0.05f, 0.0f, 0.0f, 1.0f,
+         0.05f, -0.05f, 0.0f, 1.0f, 0.0f,
+         0.05f,  0.05f, 0.0f, 1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &crosshairVAO);
+    glGenBuffers(1, &crosshairVBO);
+    glBindVertexArray(crosshairVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, crosshairVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(crosshairVertices), &crosshairVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+
 
 	// Inicializacion de los objetos.
 	skyboxSphere.init();
@@ -442,6 +485,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	Texture textureWall("../Textures/whiteWall.jpg");
 	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
 	textureWall.loadImage();
+
+
 	// Creando la textura con id 1
 	glGenTextures(1, &textureWallID);
 	// Enlazar esa textura a una tipo de textura de 2D.
@@ -468,6 +513,24 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 		std::cout << "Failed to load texture" << std::endl;
 	// Libera la memoria de la textura
 	textureWall.freeImage();
+
+	Texture textureCrosshair("../Textures/objetivo.png");
+	textureCrosshair.loadImage(true); // true para incluir canal alpha
+	glGenTextures(1, &crosshairTextureID);
+	glBindTexture(GL_TEXTURE_2D, crosshairTextureID);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	if (textureCrosshair.getData()) {
+		// Forzar el formato a RGBA
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+					textureCrosshair.getWidth(), textureCrosshair.getHeight(), 
+					0, GL_RGBA, GL_UNSIGNED_BYTE, textureCrosshair.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	textureCrosshair.freeImage();
 
 	// Definiendo la textura a utilizar
 	Texture textureWindow("../Textures/ventana.png");
@@ -678,6 +741,7 @@ void destroy()
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDeleteTextures(1, &skyboxTextureID);
+	glDeleteTextures(1, &crosshairTextureID);
 }
 
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes)
@@ -1028,24 +1092,27 @@ bool processInput(bool continueApplication)
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::rotate(modelMatrixCazador, 0.02f, glm::vec3(0, 1, 0));
-		animationIndexCazador = 1;
+		animationIndexCazador = 2;
 	}
 	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::rotate(modelMatrixCazador, -0.02f, glm::vec3(0, 1, 0));
-		animationIndexCazador = 1;
+		animationIndexCazador = 2;
 	}
 	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
-		animationIndexCazador = 1;
+		animationIndexCazador = 2;
 	}
 	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
-		animationIndexCazador = 1;
+		animationIndexCazador = 2;
 	}
-
+	
+	if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+		animationIndexCazador = 0;
+	}
 	bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 	if (!isJump && keySpaceStatus)
 	{
@@ -1145,6 +1212,7 @@ void applicationLoop()
 
 		// seguimiento de la camara en tercera persona al personaje principal
 		if (isFirstPerson) {
+			renderCrosshair();
 			// Obtener la posición base del cazador
 			glm::vec3 position = glm::vec3(modelMatrixCazador[3]);
 			position.y += 2.05f; // Altura de los ojos
@@ -1166,7 +1234,8 @@ void applicationLoop()
 			if (axis.y < 0)
 				angleTarget = -angleTarget;
 			//angleTarget += glm::radians(180.0f); // Agregar rotación de 180 grados
-			
+			float upwardRotation = -90.0f; // Ajusta este valor según necesites
+    		angleTarget += glm::radians(upwardRotation);
 			camera->setAngleTarget(angleTarget);
 		} else {
 			// Código original para la cámara en tercera persona
@@ -1416,7 +1485,7 @@ void applicationLoop()
 		modelMatrixCazadorBody = glm::scale(modelMatrixCazadorBody, glm::vec3(0.1f));
 		modelCazador.setAnimationIndex(animationIndexCazador);
 		modelCazador.render(modelMatrixCazadorBody);
-		animationIndexCazador = 0;
+		animationIndexCazador = 1;
 
 		float gunOffsetX = 0.12f;    // Ajuste lateral
 		float gunOffsetY = 1.5f;     // Ajuste de altura
@@ -1424,14 +1493,14 @@ void applicationLoop()
 		float gunRotateY = 90.0f;    // Rotación horizontal
 		float gunRotateX = -15.0f;   // Inclinación
 		float gunScale = 0.02f;      // Escala
-
+		/*
 		glm::mat4 modelMatrixGun = glm::mat4(modelMatrixCazador);
 		modelMatrixGun = glm::translate(modelMatrixGun, glm::vec3(gunOffsetX, gunOffsetY, gunOffsetZ));
 		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateY), glm::vec3(0, 1, 0));
 		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateX), glm::vec3(1, 0, 0));
 		modelMatrixGun = glm::scale(modelMatrixGun, glm::vec3(gunScale));
 
-		modelGun.render(modelMatrixGun);
+		//modelGun.render(modelMatrixGun);
 		/*modelMatrixCowboy[3][1] = terrain.getHeightTerrain(modelMatrixCowboy[3][0], modelMatrixCowboy[3][2]);
 		glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy);
 		modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody, glm::vec3(0.0021f));
@@ -1907,6 +1976,10 @@ void applicationLoop()
 		// Constantes de animaciones
 		// rotHelHelY += 0.5;
 		// rotHelHelBack += 0.5;
+
+		if (isFirstPerson) {
+			renderCrosshair();
+		}
 
 		glfwSwapBuffers(window);
 	}
