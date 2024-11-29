@@ -79,6 +79,9 @@ int modelSelected = 0;
 bool enableCountSelected = true;
 bool enableActionKeyF = true;
 
+float joystickSensitivity = 0.5f;  // Sensibilidad del joystick
+float joystickDeadzone = 0.2f;     // Zona muerta del joystick
+bool isAiming = false;  
 // Variables to animations keyframes
 //bool saveFrame = false, availableSave = true;
 //std::ofstream myfile;
@@ -804,6 +807,71 @@ bool processInput(bool continueApplication)
 	if (exitApp || glfwWindowShouldClose(window) != 0)
 	{
 		return false;
+	}
+
+	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE) {
+		int axesCount, buttonCount;
+		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axesCount);
+		const unsigned char *buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
+
+		// Movimiento con stick izquierdo
+		if (fabs(axes[0]) > joystickDeadzone) {
+			modelMatrixCazador = glm::rotate(modelMatrixCazador, 
+				glm::radians(-axes[0] * joystickSensitivity), 
+				glm::vec3(0, 1, 0));
+			animationIndexCazador = 1;
+		}
+		if (fabs(axes[1]) > joystickDeadzone) {
+			modelMatrixCazador = glm::translate(modelMatrixCazador, 
+				glm::vec3(0, 0, -axes[1] * 0.1));
+			animationIndexCazador = 1;
+		}
+
+		// Cámara con stick derecho
+		if (fabs(axes[2]) > joystickDeadzone) {
+			camera->mouseMoveCamera(-axes[2] * joystickSensitivity, 0.0, deltaTime);
+		}
+		if (fabs(axes[3]) > joystickDeadzone) {
+			camera->mouseMoveCamera(0.0, axes[3] * joystickSensitivity, deltaTime);
+		}
+
+		// Apuntado con gatillo derecho (RT)
+		if (axes[5] > 0.5f && !isFirstPerson) {
+			isFirstPerson = true;
+			camera->setDistanceFromTarget(0.0f);
+		} else if (axes[5] <= 0.5f && isFirstPerson) {
+			isFirstPerson = false;
+			camera->setDistanceFromTarget(distanceFromTarget);
+		}
+
+		// Salto con botón A (0)
+		if (!isJump && buttons[0] == GLFW_PRESS) {
+			isJump = true;
+			tmv = 0;
+			startTimeJump = currTime;
+		}
+
+		// Linterna con botón Y (3)
+		if (buttons[3] == GLFW_PRESS && enableActionKeyL) {
+			enableActionKeyL = false;
+			isLampON = !isLampON;
+		} else if (buttons[3] == GLFW_RELEASE) {
+			enableActionKeyL = true;
+		}
+
+		// Disparo con gatillo izquierdo (LT)
+		if (axes[4] > 0.5f) {
+			animationIndexCazador = 0; // Animación de disparo
+		}
+
+		// Cambio de tiempo con D-pad (POV)
+		if (buttons[11] == GLFW_PRESS && enableActionKeyT) { // D-pad derecho
+			enableActionKeyT = false;
+			estadoTiempo++;
+			if (estadoTiempo > 5) estadoTiempo = 0;
+		} else if (buttons[11] == GLFW_RELEASE) {
+			enableActionKeyT = true;
+		}
 	}
 
 	if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
