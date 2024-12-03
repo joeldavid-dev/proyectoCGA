@@ -337,11 +337,11 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 
 	// Inicialización de los shaders
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
-	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox.fs");
-	//shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/multipleLights.fs");
-	shaderMulLighting.initialize("../Shaders/iluminacion_textura_animation.vs", "../Shaders/multipleLights.fs");
-	shaderTerrain.initialize("../Shaders/terrain.vs", "../Shaders/terrain.fs");
 	shaderCrosshair.initialize("../Shaders/crosshair.vs", "../Shaders/crosshair.fs");
+	// Shaders con neblina
+	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox_fog.fs");
+	shaderMulLighting.initialize("../Shaders/iluminacion_textura_animation_fog.vs", "../Shaders/multipleLights_fog.fs");
+	shaderTerrain.initialize("../Shaders/terrain_fog.vs", "../Shaders/terrain_fog.fs");
 
 	float crosshairVertices[] = {
         // Pos      // TexCoords
@@ -1015,7 +1015,7 @@ bool processInput(bool continueApplication)
 			break;
 			case 5:
 			// Iluminación de noche
-			colorAmbiente = glm::vec3(0.1, 0.2, 0.5);
+			colorAmbiente = glm::vec3(0.05, 0.05, 0.1);
 			colorDifuso = glm::vec3(0.2);
 			colorEspecular = glm::vec3(0.2);
 			direccionLuz = glm::vec3(0,-1,0);
@@ -1290,19 +1290,19 @@ void applicationLoop()
 		}*/
 
 		// seguimiento de la camara en tercera persona al personaje principal
+		// Obtener la posición base del cazador
+		glm::vec3 position = glm::vec3(modelMatrixCazador[3]);
+		position.y += 2.0f; // Altura de los ojos
+
+		// Ajustar el vector de dirección
+		glm::vec3 forward = glm::normalize(glm::vec3(modelMatrixCazador[2])); // Agregamos el negativo de nuevo
+		glm::vec3 cameraTarget = position + (forward * 0.40f) ; // El target debe estar adelante de la posición
+		camera->setCameraTarget(cameraTarget); // Miramos hacia el punto adelante
+
 		if (isFirstPerson) {
-			renderCrosshair();
-			// Obtener la posición base del cazador
-			glm::vec3 position = glm::vec3(modelMatrixCazador[3]);
-			position.y += 2.0f; // Altura de los ojos
-			
-			// Ajustar el vector de dirección
-			glm::vec3 forward = glm::normalize(glm::vec3(modelMatrixCazador[2])); // Agregamos el negativo de nuevo
-			glm::vec3 target = position + (forward * 0.40f) ; // El target debe estar adelante de la posición
-			
+			renderCrosshair();	
 			// Configurar la cámara en primera persona
 			camera->setPosition(position);
-			camera->setCameraTarget(target); // Miramos hacia el punto adelante
 			camera->setDistanceFromTarget(0.1f);
 			
 			// Ajustar el ángulo para que coincida con la dirección de vista
@@ -1320,7 +1320,6 @@ void applicationLoop()
 			// Código original para la cámara en tercera persona
 			axis = glm::axis(glm::quat_cast(modelMatrixCazador));
 			angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
-			target = modelMatrixCazador[3];
 
 			if (std::isnan(angleTarget))
 				angleTarget = 0.0;
@@ -1328,7 +1327,6 @@ void applicationLoop()
 				angleTarget = -angleTarget;
 			if (modelSelected == 1)
 				angleTarget -= glm::radians(90.0f);
-			camera->setCameraTarget(target);
 			camera->setAngleTarget(angleTarget);
 		}
 
@@ -1354,6 +1352,15 @@ void applicationLoop()
 								 glm::value_ptr(projection));
 		shaderTerrain.setMatrix4("view", 1, false,
 								 glm::value_ptr(view));
+
+		/*******************************************
+		 * Propiedades de neblina
+		 *******************************************/
+		shaderMulLighting.setVectorFloat3("fogColor", glm::value_ptr(colorAmbiente));
+		shaderMulLighting.setFloat("gradient", 2);
+		shaderTerrain.setVectorFloat3("fogColor", glm::value_ptr(colorAmbiente));
+		shaderTerrain.setFloat("gradient", 1.5);
+		shaderSkybox.setVectorFloat3("fogColor", glm::value_ptr(colorAmbiente));
 
 		/*******************************************
 		 * Propiedades Luz direccional

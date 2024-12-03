@@ -44,6 +44,8 @@ out vec4 color;
 in vec3 fragPos;  
 in vec3 our_normal;
 in vec2 our_uv;
+in float visibility;
+uniform vec3 fogColor;
 
 uniform int pointLightCount;
 uniform int spotLightCount;
@@ -122,4 +124,5 @@ vec3 calculateSpotLights(){
 void main()
 {
     color = vec4(calculateDirectionalLight(directionalLight.light, directionalLight.direction) + calculatePointLights() + calculateSpotLights(), 1.0);
+	color = mix(vec4(fogColor, 1.0), color, visibility);
 }
