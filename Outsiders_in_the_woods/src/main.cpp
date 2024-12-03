@@ -20,7 +20,7 @@
 #include "Headers/Sphere.h"
 #include "Headers/Cylinder.h"
 #include "Headers/Box.h"
-#include "Headers/FirstPersonCamera.h"
+//#include "Headers/FirstPersonCamera.h"
 #include "Headers/ThirdPersonCamera.h"
 
 // GLM include
@@ -78,6 +78,9 @@ int lastMousePosY, offsetY = 0;
 int modelSelected = 0;
 bool enableCountSelected = true;
 bool enableActionKeyF = true;
+
+float mouseSensitivity = 0.01f;
+float cameraSensitivity = 0.4f;
 
 float joystickSensitivity = 0.5f;  // Sensibilidad del joystick
 float joystickDeadzone = 0.2f;     // Zona muerta del joystick
@@ -425,7 +428,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
-	camera->setSensitivity(1.0);
+	camera->setSensitivity(cameraSensitivity);
 
 	// Carga de texturas para el skybox
 	Texture skyboxTexture = Texture("");
@@ -931,10 +934,18 @@ bool processInput(bool continueApplication)
 		}
 	}
 
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
-	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-		camera->mouseMoveCamera(0.0, offsetY, deltaTime);
+	// Control con el ratón
+	//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		// Clic izquierdo
+		//camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
+		
+	//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+		// Clic derecho
+		//camera->mouseMoveCamera(0.0, offsetY, deltaTime);
+
+	// Rotación del personaje prinicipal con el movimiento del mouse
+	modelMatrixCazador = glm::rotate(modelMatrixCazador, -offsetX * mouseSensitivity, glm::vec3(0, 1, 0));
+	camera->mouseMoveCamera(0.0, offsetY, deltaTime);
 
 	offsetX = 0;
 	offsetY = 0;
@@ -1157,22 +1168,22 @@ bool processInput(bool continueApplication)
 		modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(0.0, 0.0, -0.02));*/
 
 	// Controles del personaje principal
-	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+	if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS))
 	{
-		modelMatrixCazador = glm::rotate(modelMatrixCazador, 0.02f, glm::vec3(0, 1, 0));
+		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.1, 0.0, 0.0));
 		animationIndexCazador = 2;
 	}
-	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+	else if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS))
 	{
-		modelMatrixCazador = glm::rotate(modelMatrixCazador, -0.02f, glm::vec3(0, 1, 0));
+		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(-0.1, 0.0, 0.0));
 		animationIndexCazador = 2;
 	}
-	if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+	if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS))
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
 		animationIndexCazador = 2;
 	}
-	else if (modelSelected == 0 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+	else if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS))
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
 		animationIndexCazador = 2;
@@ -1283,7 +1294,7 @@ void applicationLoop()
 			renderCrosshair();
 			// Obtener la posición base del cazador
 			glm::vec3 position = glm::vec3(modelMatrixCazador[3]);
-			position.y += 2.05f; // Altura de los ojos
+			position.y += 2.0f; // Altura de los ojos
 			
 			// Ajustar el vector de dirección
 			glm::vec3 forward = glm::normalize(glm::vec3(modelMatrixCazador[2])); // Agregamos el negativo de nuevo
@@ -1302,7 +1313,7 @@ void applicationLoop()
 			if (axis.y < 0)
 				angleTarget = -angleTarget;
 			//angleTarget += glm::radians(180.0f); // Agregar rotación de 180 grados
-			float upwardRotation = -90.0f; // Ajusta este valor según necesites
+			float upwardRotation = 0.0f; // Ajusta este valor según necesites
     		angleTarget += glm::radians(upwardRotation);
 			camera->setAngleTarget(angleTarget);
 		} else {

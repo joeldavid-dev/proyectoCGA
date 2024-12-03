@@ -106,6 +106,9 @@ public:
 	void setDistanceFromTarget(float distanceFromTarget) {
 		this->distanceFromTarget = distanceFromTarget;
 	}
+	void setPitch(float anglePitch) {
+		this->pitch = anglePitch;
+	}
 
 protected:
 	glm::vec3 position;
