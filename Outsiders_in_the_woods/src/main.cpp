@@ -123,6 +123,10 @@ bool enableActionKeyV = true;
 Model modelCasaCamp;
 glm::mat4 modelMatrixCasaCamp = glm::mat4(1.0); // Matriz de transformación
 
+// Fogata
+Model modelFogata;
+glm::mat4 modelMatrixFogata = glm::mat4(1.0f);
+
 // Arboles tipo 1
 Model modelArbol1;
 // Posicionamiento de cada arbol
@@ -200,7 +204,7 @@ std::vector<glm::vec3> troncoPosition = {
 	glm::vec3(-4, 0, -56), glm::vec3(50, 0, -63), glm::vec3(94, 0, 39), 
 	glm::vec3(-95, 0, -3)
 };
-// Ángulo de orientación por cada arbol
+// Ángulo de orientación
 std::vector<float> troncoOrientation = {
 	0, 30, 60, 90, 120, 150, 180
 };
@@ -385,6 +389,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Casa de campaña
 	modelCasaCamp.loadModel("../models/casa_camp/casa_camp.obj");
 	modelCasaCamp.setShader(&shaderMulLighting);
+
+	// Fogata
+	modelFogata.loadModel("../models/fogata/fogata.fbx");
+	modelFogata.setShader(&shaderMulLighting);
 
 	// Arboles tipo 1
 	modelArbol1.loadModel("../models/arbol1/arbol.obj");
@@ -720,6 +728,7 @@ void destroy()
 
 	// Custom objects Delete
 	modelCasaCamp.destroy();
+	modelFogata.destroy();
 	modelArbol1.destroy();
 	//modelArbol2.destroy();
 	modelArbolOtono.destroy();
@@ -1015,7 +1024,7 @@ bool processInput(bool continueApplication)
 			break;
 			case 5:
 			// Iluminación de noche
-			colorAmbiente = glm::vec3(0.05, 0.05, 0.1);
+			colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
 			colorDifuso = glm::vec3(0.2);
 			colorEspecular = glm::vec3(0.2);
 			direccionLuz = glm::vec3(0,-1,0);
@@ -1223,10 +1232,14 @@ void applicationLoop()
 	int maxAdvance = 0.0;*/
 
 	// Posicionamiento de la casa de campaña
-	modelMatrixCasaCamp = glm::translate(modelMatrixCasaCamp, glm::vec3(-3.0, 0.0, 2.0));
+	modelMatrixCasaCamp = glm::translate(modelMatrixCasaCamp, glm::vec3(-8.0, 0.0, 0.0));
+	modelMatrixCasaCamp = glm::rotate(modelMatrixCasaCamp, glm::radians(90.0f), glm::vec3(0, 1, 0));
+
+	// Posicionamiento de la fogata
+	modelMatrixFogata = glm::translate(modelMatrixFogata, glm::vec3(0.0, 0.0, 0.0));
 
 	// Posicionamiento del personaje principal
-	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, 0.0f));
+	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, -10.0f));
 
 	// modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
 
@@ -1418,31 +1431,27 @@ void applicationLoop()
 		/*******************************************
 		 * Propiedades PointLights
 		 *******************************************/
-		/*shaderMulLighting.setInt("pointLightCount", lamp1Position.size() + lamp2Position.size());
-		shaderTerrain.setInt("pointLightCount", lamp1Position.size() + lamp2Position.size());
-		for(int i = 0; i < lamp1Position.size(); i++){
-			glm::mat4 matrixAdjustLamp = glm::mat4(1.0);
-			matrixAdjustLamp = glm::translate(matrixAdjustLamp, lamp1Position[i]);
-			matrixAdjustLamp = glm::rotate(matrixAdjustLamp, glm::radians(lamp1Orientation[i]), glm::vec3(0, 1, 0));
-			matrixAdjustLamp = glm::scale(matrixAdjustLamp, glm::vec3(0.5));
-			matrixAdjustLamp = glm::translate(matrixAdjustLamp, glm::vec3(0.0, 10.35, 0));
-			glm::vec3 lampPosition = glm::vec3(matrixAdjustLamp[3]);
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.01)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.02)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(i) + "].position", glm::value_ptr(lampPosition));
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0);
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.09);
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.02);
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.01)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.02)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(i) + "].position", glm::value_ptr(lampPosition));
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].constant", 1.0);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].linear", 0.09);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(i) + "].quadratic", 0.02);
-		}
-		for(int i = 0; i < lamp2Position.size(); i++){
+		shaderMulLighting.setInt("pointLightCount", 1);
+		shaderTerrain.setInt("pointLightCount", 1);
+		// Luz de la fogata
+		glm::vec3 fogataLightPosition = glm::vec3(modelMatrixFogata[3]);
+		shaderMulLighting.setVectorFloat3("pointLights[0].light.ambient", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderMulLighting.setVectorFloat3("pointLights[0].light.diffuse", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderMulLighting.setVectorFloat3("pointLights[0].light.specular", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderMulLighting.setVectorFloat3("pointLights[0].position", glm::value_ptr(fogataLightPosition));
+		shaderMulLighting.setFloat("pointLights[0].constant", 1.0);
+		shaderMulLighting.setFloat("pointLights[0].linear", 0.09);
+		shaderMulLighting.setFloat("pointLights[0].quadratic", 0.02);
+		shaderTerrain.setVectorFloat3("pointLights[0].light.ambient", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderTerrain.setVectorFloat3("pointLights[0].light.diffuse", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderTerrain.setVectorFloat3("pointLights[0].light.specular", glm::value_ptr(glm::vec3(1, 1, 0.8)));
+		shaderTerrain.setVectorFloat3("pointLights[0].position", glm::value_ptr(fogataLightPosition));
+		shaderTerrain.setFloat("pointLights[0].constant", 1.0);
+		shaderTerrain.setFloat("pointLights[0].linear", 0.09);
+		shaderTerrain.setFloat("pointLights[0].quadratic", 0.02);
+
+
+		/*for(int i = 0; i < lamp2Position.size(); i++){
 			glm::mat4 matrixAdjustLamp = glm::mat4(1.0);
 			matrixAdjustLamp = glm::translate(matrixAdjustLamp, lamp2Position[i]);
 			matrixAdjustLamp = glm::rotate(matrixAdjustLamp, glm::radians(lamp2Orientation[i]), glm::vec3(0, 1, 0));
@@ -1494,11 +1503,16 @@ void applicationLoop()
 		/*******************************************
 		 * Custom objects obj
 		 *******************************************/
+		// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
+		glActiveTexture(GL_TEXTURE0);
+
 		// Renderizado de la casa de campaña
 		modelMatrixCasaCamp[3][1] = terrain.getHeightTerrain(modelMatrixCasaCamp[3][0], modelMatrixCasaCamp[3][2]);
 		modelCasaCamp.render(modelMatrixCasaCamp);
-		// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
-		glActiveTexture(GL_TEXTURE0);
+
+		// Renderizado de la fogata
+		modelMatrixFogata[3][1] = terrain.getHeightTerrain(modelMatrixFogata[3][1], modelMatrixFogata[3][2]);
+		modelFogata.render(modelMatrixFogata);
 
 		// Renderizado de arboles tipo 1
 		for (int i = 0; i < arbol1Position.size(); i++)
@@ -1567,10 +1581,8 @@ void applicationLoop()
 				modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
 		}
 		modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
-		glm::mat4 modelMatrixCazadorBody = glm::mat4(modelMatrixCazador);
-		modelMatrixCazadorBody = glm::scale(modelMatrixCazadorBody, glm::vec3(0.1f));
 		modelCazador.setAnimationIndex(animationIndexCazador);
-		modelCazador.render(modelMatrixCazadorBody);
+		modelCazador.render(modelMatrixCazador);
 		animationIndexCazador = 1;
 
 		float gunOffsetX = 0.12f;    // Ajuste lateral
@@ -1621,7 +1633,7 @@ void applicationLoop()
 
 		// Creación de los colliders ========================================
 
-		// Colliders de la casa de campaña
+		// Collider de la casa de campaña
 		glm::mat4 colliderMatrixCasaCamp = glm::mat4(modelMatrixCasaCamp);
 		colliderMatrixCasaCamp = glm::scale(colliderMatrixCasaCamp, glm::vec3(0.5));
 		colliderMatrixCasaCamp = glm::translate(colliderMatrixCasaCamp, modelCasaCamp.getSbb().c);
@@ -1630,14 +1642,23 @@ void applicationLoop()
 		casaCampCollider.ratio = modelCasaCamp.getSbb().ratio * 0.8;
 		addOrUpdateColliders(collidersSBB, "casa_camp", casaCampCollider, modelMatrixCasaCamp);
 
+		// Collider de la fogata
+		glm::mat4 colliderMatrixFogata = glm::mat4(modelMatrixFogata);
+		AbstractModel::OBB fogataCollider;
+		colliderMatrixFogata = glm::translate(colliderMatrixFogata, modelFogata.getObb().c);
+		colliderMatrixFogata = glm::translate(colliderMatrixFogata, glm::vec3(0.0, 0.8, -0.8));
+		fogataCollider.u = glm::quat_cast(modelMatrixFogata);
+		fogataCollider.c = colliderMatrixFogata[3];
+		fogataCollider.e = modelFogata.getObb().e;
+		addOrUpdateColliders(collidersOBB, "fogata", fogataCollider, modelMatrixFogata);
+
 		// Collider del personaje principal
 		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
 		AbstractModel::OBB cazadorCollider;
-		colliderMatrixCazador = glm::scale(colliderMatrixCazador, glm::vec3(0, 0.1, 0));
 		colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
 		cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
 		cazadorCollider.c = colliderMatrixCazador[3];
-		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.015,0.02,0.01);
+		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.4);
 		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
 		/*glm::mat4 colliderMatrixAircraft = glm::mat4(modelMatrixAircraft);
@@ -1716,7 +1737,6 @@ void applicationLoop()
 			colliderMatrixTronco = glm::rotate(colliderMatrixTronco, glm::radians(troncoOrientation[i]), glm::vec3(0, 1, 0));
 
 			troncoCollider.u = glm::quat_cast(colliderMatrixTronco);
-			colliderMatrixTronco = glm::scale(colliderMatrixTronco, glm::vec3(1.0));
 			colliderMatrixTronco = glm::translate(colliderMatrixTronco, modelTronco.getObb().c);
 			troncoCollider.c = colliderMatrixTronco[3];
 			troncoCollider.e = modelTronco.getObb().e * glm::vec3(1.0);
