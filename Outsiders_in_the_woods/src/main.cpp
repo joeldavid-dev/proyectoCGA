@@ -23,6 +23,9 @@
 //#include "Headers/FirstPersonCamera.h"
 #include "Headers/ThirdPersonCamera.h"
 
+// Font rendering include
+#include "Headers/FontTypeRendering.h"
+
 // GLM include
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -73,6 +76,7 @@ Sphere skyboxSphere(20, 20);
 Box boxCollider;
 Sphere modelEsfereCollider(10, 10);
 Cylinder modeloRayo(20, 20);
+Box boxIntro;
 
 // Variables ======================================================
 bool exitApp = false;
@@ -224,8 +228,12 @@ Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
 
 GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
-GLuint skyboxTextureID, crosshairTextureID;
-GLuint crosshairVAO, crosshairVBO;
+GLuint skyboxTextureID;
+GLuint textureInit1ID, textureInit2ID, textureActivaID, textureScreenID;
+GLuint crosshairTextureID, crosshairVAO, crosshairVBO;
+
+// Modelo para el render del texto
+FontTypeRendering::FontTypeRendering *modelText;
 
 GLenum types[6] = {
 	GL_TEXTURE_CUBE_MAP_POSITIVE_X,
@@ -249,19 +257,25 @@ std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>> coll
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>> collidersOBB;
 
 // OpenAL Defines
-#define NUM_BUFFERS 1
-#define NUM_SOURCES 1
+#define NUM_BUFFERS 2
+#define NUM_SOURCES 2
 #define NUM_ENVIRONMENTS 1
 // Listener
 ALfloat listenerPos[] = { 0.0, 0.0, 4.0 };
 ALfloat listenerVel[] = { 0.0, 0.0, 0.0 };
 ALfloat listenerOri[] = { 0.0, 0.0, 1.0, 0.0, 1.0, 0.0 };
-// Source 0 rana 0
-ALfloat source0Pos[] = { 0.0, 0.0, 0.0 };
+// Source 0 fuego
+ALfloat source0Pos[] = { modelMatrixFogata[3].x, modelMatrixFogata[3].y, modelMatrixFogata[3].z };
 ALfloat source0Vel[] = { 0.0, 0.0, 0.0 };
-/*/ Source 1 fuego
-ALfloat source1Pos[] = { 0.0, 0.0, 0.0 };
-ALfloat source1Vel[] = { 0.0, 0.0, 0.0 };*/
+// Source 1 rana 1
+ALfloat source1Pos[] = { 2.0, 0.0, 0.0 };
+ALfloat source1Vel[] = { 0.0, 0.0, 0.0 };
+/*/ Source 2 rana 2
+ALfloat source2Pos[] = { 4.0, 0.0, 0.0 };
+ALfloat source2Vel[] = { 0.0, 0.0, 0.0 };
+// Source 3 rana 3
+ALfloat source3Pos[] = { -4.0, 0.0, 0.0 };
+ALfloat source3Vel[] = { 0.0, 0.0, 0.0 };*/
 // Buffers
 ALuint buffer[NUM_BUFFERS];
 ALuint source[NUM_SOURCES];
@@ -272,7 +286,7 @@ ALenum format;
 ALvoid *data;
 int ch;
 ALboolean loop;
-std::vector<bool> sourcesPlay = {true};
+std::vector<bool> sourcesPlay = {true, true};
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
@@ -284,21 +298,6 @@ void scrollCallback(GLFWwindow *window, double xoffset, double yoffset);
 void init(int width, int height, std::string strTitle, bool bFullScreen);
 void destroy();
 bool processInput(bool continueApplication = true);
-
-void renderCrosshair() {
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, crosshairTextureID);
-    shaderCrosshair.setInt("crosshairTexture", 0);
-    
-    glBindVertexArray(crosshairVAO);
-    glDrawArrays(GL_TRIANGLES, 0, 6);
-    
-    glBindVertexArray(0);
-    glDisable(GL_BLEND);
-}
 
 // Implementacion de todas las funciones.
 void init(int width, int height, std::string strTitle, bool bFullScreen)
@@ -404,9 +403,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	modeloRayo.init();
 	modeloRayo.setShader(&shader);
 	modeloRayo.setColor(glm::vec4(1.0, 1.0, 1.0, 0.3));
-	//boxIntro.init();
-	//boxIntro.setShader(&shaderTexture);
-	//boxIntro.setScale(glm::vec3(2.0, 2.0, 1.0));
+
+	boxIntro.init();
+	boxIntro.setShader(&shaderTexture);
+	boxIntro.setScale(glm::vec3(2.0, 2.0, 1.0));
 
 	// Casa de campaña
 	modelCasaCamp.loadModel("../models/casa_camp/casa_camp.obj");
@@ -419,11 +419,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Arboles tipo 1
 	modelArbol1.loadModel("../models/arbol1/arbol.obj");
 	modelArbol1.setShader(&shaderMulLighting);
-	/*modelLamp2.loadModel("../models/Street_Light/Lamp.obj");
-	modelLamp2.setShader(&shaderMulLighting);
-	modelLampPost2.loadModel("../models/Street_Light/LampPost.obj");
-	modelLampPost2.setShader(&shaderMulLighting);*/
-
 
 	// Arboles otoño
 	modelArbolOtono.loadModel("../models/arbol_otono/arbol_otono.obj");
@@ -457,6 +452,11 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	terrain.init();
 	terrain.setShader(&shaderTerrain);
 
+	// Se inicializa el model de render text
+	modelText = new FontTypeRendering::FontTypeRendering(screenWidth, screenHeight);
+	modelText->Initialize();
+
+	// Inicialización de la cámara
 	camera->setPosition(glm::vec3(0.0, 3.0, 4.0));
 	camera->setDistanceFromTarget(distanceFromTarget);
 	camera->setSensitivity(cameraSensitivity);
@@ -732,6 +732,63 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 		std::cout << "Fallo la carga de textura" << std::endl;
 	textureBlendMap.freeImage(); // Liberamos memoria
 
+	// Definiendo la textura
+	Texture textureIntro1("../Textures/Intro1.png");
+	textureIntro1.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureInit1ID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureInit1ID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureIntro1.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureIntro1.getChannels() == 3 ? GL_RGB : GL_RGBA, textureIntro1.getWidth(), textureIntro1.getHeight(), 0,
+		textureIntro1.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureIntro1.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureIntro1.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture textureIntro2("../Textures/Intro2.png");
+	textureIntro2.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureInit2ID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureInit2ID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureIntro2.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureIntro2.getChannels() == 3 ? GL_RGB : GL_RGBA, textureIntro2.getWidth(), textureIntro2.getHeight(), 0,
+		textureIntro2.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureIntro2.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureIntro2.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture textureScreen("../Textures/Screen.png");
+	textureScreen.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureScreenID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureScreenID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureScreen.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureScreen.getChannels() == 3 ? GL_RGB : GL_RGBA, textureScreen.getWidth(), textureScreen.getHeight(), 0,
+		textureScreen.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureScreen.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureScreen.freeImage(); // Liberamos memoria
+
 	/*******************************************
 	 * OpenAL init
 	 *******************************************/
@@ -749,8 +806,8 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	}
 	// Generate buffers, or else no sound will happen!
 	alGenBuffers(NUM_BUFFERS, buffer);
-	buffer[0] = alutCreateBufferFromFile("../sounds/rana.wav");
-	//buffer[1] = alutCreateBufferFromFile("../sounds/fire.wav");
+	buffer[0] = alutCreateBufferFromFile("../sounds/fire.wav");
+	buffer[1] = alutCreateBufferFromFile("../sounds/rana.wav");
 	int errorAlut = alutGetError();
 	if (errorAlut != ALUT_ERROR_NO_ERROR){
 		printf("- Error open files with alut %d !!\n", errorAlut);
@@ -767,7 +824,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	else {
 		printf("init - no errors after alGenSources\n");
 	}
-	// Configuración de sonido de rana 0
+	// Configuración de sonido de fuego
 	alSourcef(source[0], AL_PITCH, 1.0f);
 	alSourcef(source[0], AL_GAIN, 1.0f);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
@@ -775,15 +832,33 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	alSourcei(source[0], AL_BUFFER, buffer[0]);
 	alSourcei(source[0], AL_LOOPING, AL_TRUE);
 	alSourcef(source[0], AL_MAX_DISTANCE, 200);
+	alSourcefv(source[0], AL_POSITION, source0Pos);
 
-	/*/ Configuración de sonido de fuego
+	// Configuración de sonido de rana 1
 	alSourcef(source[1], AL_PITCH, 1.0f);
 	alSourcef(source[1], AL_GAIN, 1.0f);
 	alSourcefv(source[1], AL_POSITION, source1Pos);
 	alSourcefv(source[1], AL_VELOCITY, source1Vel);
 	alSourcei(source[1], AL_BUFFER, buffer[1]);
 	alSourcei(source[1], AL_LOOPING, AL_TRUE);
-	alSourcef(source[1], AL_MAX_DISTANCE, 200);*/
+	alSourcef(source[1], AL_MAX_DISTANCE, 200);
+	/*/ Configuración de sonido de rana 2
+	alSourcef(source[2], AL_PITCH, 1.0f);
+	alSourcef(source[2], AL_GAIN, 1.0f);
+	alSourcefv(source[2], AL_POSITION, source2Pos);
+	alSourcefv(source[2], AL_VELOCITY, source2Vel);
+	alSourcei(source[2], AL_BUFFER, buffer[1]);
+	alSourcei(source[2], AL_LOOPING, AL_TRUE);
+	alSourcef(source[2], AL_MAX_DISTANCE, 200);
+	// Configuración de sonido de rana 3
+	alSourcef(source[3], AL_PITCH, 1.0f);
+	alSourcef(source[3], AL_GAIN, 1.0f);
+	alSourcefv(source[3], AL_POSITION, source3Pos);
+	alSourcefv(source[3], AL_VELOCITY, source3Vel);
+	alSourcei(source[3], AL_BUFFER, buffer[1]);
+	alSourcei(source[3], AL_LOOPING, AL_TRUE);
+	alSourcef(source[3], AL_MAX_DISTANCE, 200);*/
+
 }
 
 void destroy()
@@ -801,6 +876,10 @@ void destroy()
 
 	// Basic objects Delete
 	skyboxSphere.destroy();
+	boxCollider.destroy();
+	modelEsfereCollider.destroy();
+	modeloRayo.destroy();
+	boxIntro.destroy();
 
 	// Custom objects Delete
 	modelCasaCamp.destroy();
@@ -828,6 +907,9 @@ void destroy()
 	glDeleteTextures(1, &textureTerrainGID);
 	glDeleteTextures(1, &textureTerrainRID);
 	glDeleteTextures(1, &textureTerrainBlendMapID);
+	glDeleteTextures(1, &textureInit1ID);
+	glDeleteTextures(1, &textureInit2ID);
+	glDeleteTextures(1, &textureScreenID);
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -901,7 +983,7 @@ bool processInput(bool continueApplication)
 		return false;
 	}
 
-	/*if(!iniciaPartida){
+	if(!iniciaPartida){
 		bool presionarEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
 		if(textureActivaID == textureInit1ID && presionarEnter){
 			iniciaPartida = true;
@@ -916,7 +998,7 @@ bool processInput(bool continueApplication)
 		}
 		else if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE)
 			presionarOpcion = false;
-	}*/
+	}
 
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE) {
 		int axesCount, buttonCount;
@@ -1310,6 +1392,202 @@ bool processInput(bool continueApplication)
 	return continueApplication;
 }
 
+void renderSolidScene(){
+	/*******************************************
+	 * Terrain
+	 *******************************************/
+	// Se activa la textura de hojas
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, textureLeavesID);
+	shaderTerrain.setInt("backgroundTexture", 0);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, textureTerrainRID);
+	shaderTerrain.setInt("rTexture", 1);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, textureTerrainGID);
+	shaderTerrain.setInt("gTexture", 2);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBID);
+	shaderTerrain.setInt("bTexture", 3);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID);
+	shaderTerrain.setInt("blendMapTexture", 4);
+	shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(80, 80)));
+	// Posicionamiento del terreno
+	terrain.setPosition(glm::vec3(TERRAIN_SIZE / 2, 0, TERRAIN_SIZE / 2));
+	terrain.render();
+	shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(0, 0)));
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	/*******************************************
+	 * Custom objects obj
+	 *******************************************/
+	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
+	glActiveTexture(GL_TEXTURE0);
+
+	// Renderizado de la casa de campaña
+	modelMatrixCasaCamp[3][1] = terrain.getHeightTerrain(modelMatrixCasaCamp[3][0], modelMatrixCasaCamp[3][2]);
+	modelCasaCamp.render(modelMatrixCasaCamp);
+
+	// Renderizado de la fogata
+	modelMatrixFogata[3][1] = terrain.getHeightTerrain(modelMatrixFogata[3][1], modelMatrixFogata[3][2]);
+	modelFogata.render(modelMatrixFogata);
+
+	// Renderizado de arboles tipo 1
+	for (int i = 0; i < arbol1Position.size(); i++)
+	{
+		arbol1Position[i].y = terrain.getHeightTerrain(arbol1Position[i].x, arbol1Position[i].z);
+		modelArbol1.setPosition(arbol1Position[i]);
+		// modelArbol1.setOrientation(glm::vec3(0, 0, 0));
+		modelArbol1.render();
+	}
+
+	// Renderizado de arboles otoño
+	for (int i = 0; i < arbolOtonoPosition.size(); i++){
+		arbolOtonoPosition[i].y = terrain.getHeightTerrain(arbolOtonoPosition[i].x, arbolOtonoPosition[i].z);
+		modelArbolOtono.setPosition(arbolOtonoPosition[i]);
+		modelArbolOtono.render();
+	}
+
+	// Renderizado de plantas acuaticas
+	for (int i = 0; i < plantaPosition.size(); i++){
+		plantaPosition[i].y = terrain.getHeightTerrain(plantaPosition[i].x, plantaPosition[i].z);
+		modelPlanta.setPosition(plantaPosition[i]);
+		modelPlanta.render();
+	}
+
+	// Renderizado de yerbas
+	for (int i = 0; i < yerbaPosition.size(); i++){
+		yerbaPosition[i].y = terrain.getHeightTerrain(yerbaPosition[i].x, yerbaPosition[i].z);
+		modelYerba.setPosition(yerbaPosition[i]);
+		modelYerba.render();
+	}
+
+	// Renderizado de troncos
+	for (int i = 0; i < troncoPosition.size(); i++){
+		troncoPosition[i].y = terrain.getHeightTerrain(troncoPosition[i].x, troncoPosition[i].z);
+		modelTronco.setPosition(troncoPosition[i]);
+		modelTronco.setOrientation(glm::vec3(0, troncoOrientation[i], 0));
+		modelTronco.render();
+	}
+
+	/*****************************************
+	 * Objetos animados por huesos
+	 * **************************************/
+	// Renderizado de ranas
+	for (int i = 0; i < ranaPosition.size(); i++) {
+		ranaPosition[i].y = terrain.getHeightTerrain(ranaPosition[i].x, ranaPosition[i].z);
+		modelRana.setPosition(ranaPosition[i]);
+		modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
+		modelRana.render();
+	}
+
+	// Personaje principal
+	/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
+	glm::vec3 ejex = glm::vec3(modelMatrixCazador[0]);
+	glm::vec3 ejez = glm::normalize(glm::cross(ejex, ejey));
+	ejex = glm::normalize(glm::cross(ejey, ejez));
+	modelMatrixCazador[0] = glm::vec4(ejex, 0.0);
+	modelMatrixCazador[1] = glm::vec4(ejey, 0.0);
+	modelMatrixCazador[2] = glm::vec4(ejez, 0.0);*/
+	modelMatrixCazador[3][1] = -GRAVITY * tmv * tmv + 3.0 * tmv +
+								terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
+	tmv = currTime - startTimeJump; // Incrementa el tmv desde que inicio.
+	if (modelMatrixCazador[3][1] < terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]))
+	{
+		isJump = false;
+		modelMatrixCazador[3][1] = terrain.getHeightTerrain(
+			modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
+	}
+	modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
+	modelCazador.setAnimationIndex(animationIndexCazador);
+	modelCazador.render(modelMatrixCazador);
+	animationIndexCazador = 1;
+
+	float gunOffsetX = 0.12f;    // Ajuste lateral
+	float gunOffsetY = 1.5f;     // Ajuste de altura
+	float gunOffsetZ = 0.2f;     // Ajuste frontal
+	float gunRotateY = 90.0f;    // Rotación horizontal
+	float gunRotateX = -15.0f;   // Inclinación
+	float gunScale = 0.02f;      // Escala
+	/*
+	glm::mat4 modelMatrixGun = glm::mat4(modelMatrixCazador);
+	modelMatrixGun = glm::translate(modelMatrixGun, glm::vec3(gunOffsetX, gunOffsetY, gunOffsetZ));
+	modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateY), glm::vec3(0, 1, 0));
+	modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateX), glm::vec3(1, 0, 0));
+	modelMatrixGun = glm::scale(modelMatrixGun, glm::vec3(gunScale));
+
+	//modelGun.render(modelMatrixGun);
+	/*modelMatrixCowboy[3][1] = terrain.getHeightTerrain(modelMatrixCowboy[3][0], modelMatrixCowboy[3][2]);
+	glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy);
+	modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody, glm::vec3(0.0021f));
+	cowboyModelAnimate.render(modelMatrixCowboyBody);*/
+
+	/*modelMatrixGuardian[3][1] = terrain.getHeightTerrain(modelMatrixGuardian[3][0], modelMatrixGuardian[3][2]);
+	glm::mat4 modelMatrixGuardianBody = glm::mat4(modelMatrixGuardian);
+	modelMatrixGuardianBody = glm::scale(modelMatrixGuardianBody, glm::vec3(0.04f));
+	guardianModelAnimate.render(modelMatrixGuardianBody);*/
+
+	/*modelMatrixCyborg[3][1] = terrain.getHeightTerrain(modelMatrixCyborg[3][0], modelMatrixCyborg[3][2]);
+	glm::mat4 modelMatrixCyborgBody = glm::mat4(modelMatrixCyborg);
+	modelMatrixCyborgBody = glm::scale(modelMatrixCyborgBody, glm::vec3(0.009f));
+	cyborgModelAnimate.setAnimationIndex(1);
+	cyborgModelAnimate.render(modelMatrixCyborgBody);*/
+
+	/*******************************************
+	 * Skybox
+	 *******************************************/
+	GLint oldCullFaceMode;
+	GLint oldDepthFuncMode;
+	// deshabilita el modo del recorte de caras ocultas para ver las esfera desde adentro
+	glGetIntegerv(GL_CULL_FACE_MODE, &oldCullFaceMode);
+	glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFuncMode);
+	shaderSkybox.setFloat("skybox", 0);
+	glCullFace(GL_FRONT);
+	glDepthFunc(GL_LEQUAL);
+	glActiveTexture(GL_TEXTURE0);
+	skyboxSphere.render();
+	glCullFace(oldCullFaceMode);
+	glDepthFunc(oldDepthFuncMode);
+}
+
+void renderAlphaScene(bool render = true){
+	// Renderizado de crosshair
+	if (isFirstPerson) {
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, crosshairTextureID);
+		shaderCrosshair.setInt("crosshairTexture", 0);
+		
+		glBindVertexArray(crosshairVAO);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
+		
+		glBindVertexArray(0);
+		glDisable(GL_BLEND);
+	}
+
+	if(render){
+		/************Render de imagen de frente**************/
+		shaderTexture.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
+		shaderTexture.setMatrix4("view", 1, false, glm::value_ptr(glm::mat4(1.0)));
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textureActivaID);
+		shaderTexture.setInt("outTexture", 0);
+		glEnable(GL_BLEND);
+		boxIntro.render();
+		glDisable(GL_BLEND);
+
+		modelText->render("Texto en OpenGL", -1, 0,1,0,0,24);
+	}
+}
+
+void renderScene(){
+	renderSolidScene();
+	renderAlphaScene();
+}
+
 void applicationLoop()
 {
 	bool psi = true;
@@ -1317,16 +1595,6 @@ void applicationLoop()
 	glm::vec3 axis;
 	glm::vec3 target;
 	float angleTarget;
-
-	/*modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(27.5, 0, 30.0));
-	modelMatrixEclipse = glm::rotate(modelMatrixEclipse, glm::radians(180.0f), glm::vec3(0, 1, 0));
-	int state = 0;
-	float advanceCount = 0.0;
-	float rotCount = 0.0;
-	float rotWheelsX = 0.0;
-	float rotWheelsY = 0.0;
-	int numberAdvance = 0;
-	int maxAdvance = 0.0;*/
 
 	// Posicionamiento de la casa de campaña
 	modelMatrixCasaCamp = glm::translate(modelMatrixCasaCamp, glm::vec3(-8.0, 0.0, 0.0));
@@ -1338,31 +1606,10 @@ void applicationLoop()
 	// Posicionamiento del personaje principal
 	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, -10.0f));
 
-	// modelMatrixHeli = glm::translate(modelMatrixHeli, glm::vec3(5.0, 10.0, -5.0));
-
-	// modelMatrixAircraft = glm::translate(modelMatrixAircraft, glm::vec3(10.0, 2.0, -17.5));
-
-	// modelMatrixLambo = glm::translate(modelMatrixLambo, glm::vec3(23.0, 0.0, 0.0));
-
-	// modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(3.0, 0.0, 20.0));
-
-	// modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(15.0, 0.0, -10.0));
-
-	// modelMatrixCowboy = glm::translate(modelMatrixCowboy, glm::vec3(13.0, 0.05, 0.0));
-
-	// modelMatrixGuardian = glm::translate(modelMatrixGuardian, glm::vec3(15, 0.05, 0.0));
-	// modelMatrixGuardian = glm::rotate(modelMatrixGuardian, glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
-
-	// modelMatrixCyborg = glm::translate(modelMatrixCyborg, glm::vec3(5.0f, 0.05, 0.0f));
-
-	// Variables to interpolation key frames
-	/*fileName = "../animaciones/animation_dart_joints.txt";
-	keyFramesDartJoints = getKeyRotFrames(fileName);
-	keyFramesDart = getKeyFrames("../animaciones/animation_dart.txt");
-	keyFramesBuzzJoints = getKeyRotFrames("../animaciones/animation_buzz_joints.txt");
-	keyFramesBuzz = getKeyFrames("../animaciones/animation_buzz.txt");*/
-
 	lastTime = TimeManager::Instance().GetTime();
+
+	// Primer imagen del menu inicial
+	textureActivaID = textureInit1ID;
 
 	while (psi)
 	{
@@ -1378,26 +1625,10 @@ void applicationLoop()
 		psi = processInput(true);
 		std::map<std::string, bool> collisionDetection;
 
-		// Variables donde se guardan las matrices de cada articulacion por 1 frame
-		std::vector<float> matrixDartJoints;
-		std::vector<glm::mat4> matrixDart;
-		std::vector<float> matrixBuzzJoints;
-		std::vector<glm::mat4> matrixBuzz;
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f),
 												(float)screenWidth / (float)screenHeight, 0.01f, 100.0f);
-
-		/*if(modelSelected == 1){
-			axis = glm::axis(glm::quat_cast(modelMatrixDart));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixDart));
-			target = modelMatrixDart[3];
-		}
-		else{
-			axis = glm::axis(glm::quat_cast(modelMatrixMayow));
-			angleTarget = glm::angle(glm::quat_cast(modelMatrixMayow));
-			target = modelMatrixMayow[3];
-		}*/
 
 		// seguimiento de la camara en tercera persona al personaje principal
 		// Obtener la posición base del cazador
@@ -1409,8 +1640,7 @@ void applicationLoop()
 		glm::vec3 cameraTarget = position + (forward * 0.40f) ; // El target debe estar adelante de la posición
 		camera->setCameraTarget(cameraTarget); // Miramos hacia el punto adelante
 
-		if (isFirstPerson) {
-			renderCrosshair();	
+		if (isFirstPerson) {	
 			// Configurar la cámara en primera persona
 			camera->setPosition(position);
 			camera->setDistanceFromTarget(0.1f);
@@ -1548,7 +1778,7 @@ void applicationLoop()
 		shaderTerrain.setFloat("pointLights[0].quadratic", 0.02);
 
 		/************Render de imagen de frente**************/
-		/*if(!iniciaPartida){
+		if(!iniciaPartida){
 			shaderTexture.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
 			shaderTexture.setMatrix4("view", 1, false, glm::value_ptr(glm::mat4(1.0)));
 			glActiveTexture(GL_TEXTURE0);
@@ -1557,167 +1787,55 @@ void applicationLoop()
 			boxIntro.render();
 			glfwSwapBuffers(window);
 			continue;
-		}*/
+		}
 
 		/*******************************************
-		 * Terrain
+		 * 1.- We render the depth buffer
 		 *******************************************/
-		// Se activa la textura de hojas
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textureLeavesID);
-		shaderTerrain.setInt("backgroundTexture", 0);
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, textureTerrainRID);
-		shaderTerrain.setInt("rTexture", 1);
-		glActiveTexture(GL_TEXTURE2);
-		glBindTexture(GL_TEXTURE_2D, textureTerrainGID);
-		shaderTerrain.setInt("gTexture", 2);
-		glActiveTexture(GL_TEXTURE3);
-		glBindTexture(GL_TEXTURE_2D, textureTerrainBID);
-		shaderTerrain.setInt("bTexture", 3);
-		glActiveTexture(GL_TEXTURE4);
-		glBindTexture(GL_TEXTURE_2D, textureTerrainBlendMapID);
-		shaderTerrain.setInt("blendMapTexture", 4);
-		shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(80, 80)));
-		// Posicionamiento del terreno
-		terrain.setPosition(glm::vec3(TERRAIN_SIZE / 2, 0, TERRAIN_SIZE / 2));
-		terrain.render();
-		shaderTerrain.setVectorFloat2("scaleUV", glm::value_ptr(glm::vec2(0, 0)));
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		/*******************************************
-		 * Custom objects obj
-		 *******************************************/
-		// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
-		glActiveTexture(GL_TEXTURE0);
-
-		// Renderizado de la casa de campaña
-		modelMatrixCasaCamp[3][1] = terrain.getHeightTerrain(modelMatrixCasaCamp[3][0], modelMatrixCasaCamp[3][2]);
-		modelCasaCamp.render(modelMatrixCasaCamp);
-
-		// Renderizado de la fogata
-		modelMatrixFogata[3][1] = terrain.getHeightTerrain(modelMatrixFogata[3][1], modelMatrixFogata[3][2]);
-		modelFogata.render(modelMatrixFogata);
-
-		// Renderizado de arboles tipo 1
-		for (int i = 0; i < arbol1Position.size(); i++)
-		{
-			arbol1Position[i].y = terrain.getHeightTerrain(arbol1Position[i].x, arbol1Position[i].z);
-			modelArbol1.setPosition(arbol1Position[i]);
-			// modelArbol1.setOrientation(glm::vec3(0, 0, 0));
-			modelArbol1.render();
-		}
-
-		// Renderizado de arboles otoño
-		for (int i = 0; i < arbolOtonoPosition.size(); i++){
-			arbolOtonoPosition[i].y = terrain.getHeightTerrain(arbolOtonoPosition[i].x, arbolOtonoPosition[i].z);
-			modelArbolOtono.setPosition(arbolOtonoPosition[i]);
-			modelArbolOtono.render();
-		}
-
-		// Renderizado de plantas acuaticas
-		for (int i = 0; i < plantaPosition.size(); i++){
-			plantaPosition[i].y = terrain.getHeightTerrain(plantaPosition[i].x, plantaPosition[i].z);
-			modelPlanta.setPosition(plantaPosition[i]);
-			modelPlanta.render();
-		}
-
-		// Renderizado de yerbas
-		for (int i = 0; i < yerbaPosition.size(); i++){
-			yerbaPosition[i].y = terrain.getHeightTerrain(yerbaPosition[i].x, yerbaPosition[i].z);
-			modelYerba.setPosition(yerbaPosition[i]);
-			modelYerba.render();
-		}
-
-		// Renderizado de troncos
-		for (int i = 0; i < troncoPosition.size(); i++){
-			troncoPosition[i].y = terrain.getHeightTerrain(troncoPosition[i].x, troncoPosition[i].z);
-			modelTronco.setPosition(troncoPosition[i]);
-			modelTronco.setOrientation(glm::vec3(0, troncoOrientation[i], 0));
-			modelTronco.render();
-		}
-
-		/*****************************************
-		 * Objetos animados por huesos
-		 * **************************************/
-		// Renderizado de ranas
-		for (int i = 0; i < ranaPosition.size(); i++) {
-			ranaPosition[i].y = terrain.getHeightTerrain(ranaPosition[i].x, ranaPosition[i].z);
-			modelRana.setPosition(ranaPosition[i]);
-			modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
-			modelRana.render();
-		}
-
-		// Personaje principal
-		/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
-		glm::vec3 ejex = glm::vec3(modelMatrixCazador[0]);
-		glm::vec3 ejez = glm::normalize(glm::cross(ejex, ejey));
-		ejex = glm::normalize(glm::cross(ejey, ejez));
-		modelMatrixCazador[0] = glm::vec4(ejex, 0.0);
-		modelMatrixCazador[1] = glm::vec4(ejey, 0.0);
-		modelMatrixCazador[2] = glm::vec4(ejez, 0.0);*/
-		modelMatrixCazador[3][1] = -GRAVITY * tmv * tmv + 3.0 * tmv +
-								 terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
-		tmv = currTime - startTimeJump; // Incrementa el tmv desde que inicio.
-		if (modelMatrixCazador[3][1] < terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]))
-		{
-			isJump = false;
-			modelMatrixCazador[3][1] = terrain.getHeightTerrain(
-				modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
-		}
-		modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
-		modelCazador.setAnimationIndex(animationIndexCazador);
-		modelCazador.render(modelMatrixCazador);
-		animationIndexCazador = 1;
-
-		float gunOffsetX = 0.12f;    // Ajuste lateral
-		float gunOffsetY = 1.5f;     // Ajuste de altura
-		float gunOffsetZ = 0.2f;     // Ajuste frontal
-		float gunRotateY = 90.0f;    // Rotación horizontal
-		float gunRotateX = -15.0f;   // Inclinación
-		float gunScale = 0.02f;      // Escala
-		/*
-		glm::mat4 modelMatrixGun = glm::mat4(modelMatrixCazador);
-		modelMatrixGun = glm::translate(modelMatrixGun, glm::vec3(gunOffsetX, gunOffsetY, gunOffsetZ));
-		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateY), glm::vec3(0, 1, 0));
-		modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateX), glm::vec3(1, 0, 0));
-		modelMatrixGun = glm::scale(modelMatrixGun, glm::vec3(gunScale));
-
-		//modelGun.render(modelMatrixGun);
-		/*modelMatrixCowboy[3][1] = terrain.getHeightTerrain(modelMatrixCowboy[3][0], modelMatrixCowboy[3][2]);
-		glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy);
-		modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody, glm::vec3(0.0021f));
-		cowboyModelAnimate.render(modelMatrixCowboyBody);*/
-
-		/*modelMatrixGuardian[3][1] = terrain.getHeightTerrain(modelMatrixGuardian[3][0], modelMatrixGuardian[3][2]);
-		glm::mat4 modelMatrixGuardianBody = glm::mat4(modelMatrixGuardian);
-		modelMatrixGuardianBody = glm::scale(modelMatrixGuardianBody, glm::vec3(0.04f));
-		guardianModelAnimate.render(modelMatrixGuardianBody);*/
-
-		/*modelMatrixCyborg[3][1] = terrain.getHeightTerrain(modelMatrixCyborg[3][0], modelMatrixCyborg[3][2]);
-		glm::mat4 modelMatrixCyborgBody = glm::mat4(modelMatrixCyborg);
-		modelMatrixCyborgBody = glm::scale(modelMatrixCyborgBody, glm::vec3(0.009f));
-		cyborgModelAnimate.setAnimationIndex(1);
-		cyborgModelAnimate.render(modelMatrixCyborgBody);*/
-
-		/*******************************************
-		 * Skybox
-		 *******************************************/
-		GLint oldCullFaceMode;
-		GLint oldDepthFuncMode;
-		// deshabilita el modo del recorte de caras ocultas para ver las esfera desde adentro
-		glGetIntegerv(GL_CULL_FACE_MODE, &oldCullFaceMode);
-		glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFuncMode);
-		shaderSkybox.setFloat("skybox", 0);
+		/*glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// render scene from light's point of view
+		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT);
 		glCullFace(GL_FRONT);
-		glDepthFunc(GL_LEQUAL);
+		prepareDepthScene();
+		renderScene();
+		glCullFace(GL_BACK);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		/*******************************************
+		 * Debug to view the texture view map
+		 *******************************************/
+		// reset viewport
+		/*glViewport(0, 0, screenWidth, screenHeight);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		// render Depth map to quad for visual debugging
+		shaderViewDepth.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
+		shaderViewDepth.setMatrix4("view", 1, false, glm::value_ptr(glm::mat4(1.0)));
+		shaderViewDepth.setFloat("near_plane", near_plane);
+		shaderViewDepth.setFloat("far_plane", far_plane);
 		glActiveTexture(GL_TEXTURE0);
-		skyboxSphere.render();
-		glCullFace(oldCullFaceMode);
-		glDepthFunc(oldDepthFuncMode);
+		glBindTexture(GL_TEXTURE_2D, depthMap);
+		boxViewDepth.setScale(glm::vec3(2.0, 2.0, 1.0));
+		boxViewDepth.render();*/
 
-		// Creación de los colliders ========================================
+		/*******************************************
+		 * 2.- We render the normal objects
+		 *******************************************/
+		//glViewport(0, 0, screenWidth, screenHeight);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//prepareScene();
+		//glActiveTexture(GL_TEXTURE10);
+		//glBindTexture(GL_TEXTURE_2D, depthMap);
+		//shaderMulLighting.setInt("shadowMap", 10);
+		//shaderTerrain.setInt("shadowMap", 10);
+		renderSolidScene();
 
+		/*******************************************
+		 * Creacion de colliders
+		 * IMPORTANT do this before interpolations
+		 *******************************************/
 		// Collider de la casa de campaña
 		glm::mat4 colliderMatrixCasaCamp = glm::mat4(modelMatrixCasaCamp);
 		colliderMatrixCasaCamp = glm::scale(colliderMatrixCasaCamp, glm::vec3(0.5));
@@ -1746,19 +1864,6 @@ void applicationLoop()
 		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.4);
 		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
-		/*glm::mat4 colliderMatrixAircraft = glm::mat4(modelMatrixAircraft);
-		AbstractModel::OBB colliderAircraft;
-		// Primero la inicialización de u antes de todo
-		colliderAircraft.u = glm::quat_cast(colliderMatrixAircraft);
-		colliderMatrixAircraft = glm::scale(colliderMatrixAircraft,
-			glm::vec3(1.0));
-		colliderMatrixAircraft = glm::translate(colliderMatrixAircraft,
-			modelAircraft.getObb().c);
-		colliderAircraft.c = colliderMatrixAircraft[3];
-		colliderAircraft.e = modelAircraft.getObb().e * 1.0f;
-		addOrUpdateColliders(collidersOBB, "aircraft", colliderAircraft,
-			modelMatrixAircraft);*/
-
 		// Colliders de arboles tipo 1
 		for (int i = 0; i < arbol1Position.size(); i++)
 		{
@@ -1775,25 +1880,6 @@ void applicationLoop()
 			addOrUpdateColliders(collidersOBB, "arbol_1-" + std::to_string(i), arbol1Collider,
 								 ColliderMatrixArbol1);
 		}
-
-		// Colliders de arboles tipo 2
-		/*for (int i = 0; i < arbol2Position.size(); i++)
-		{
-			AbstractModel::OBB arbol2Collider;
-			glm::mat4 ColliderMatrixArbol2 = glm::mat4(1.0f);
-			ColliderMatrixArbol2 = glm::translate(ColliderMatrixArbol2, arbol2Position[i]);
-			// modelColliderMatrix= glm::rotate(modelColliderMatrix, glm::radians(arbol1Orientation[i]), glm::vec3(0, 1, 0));
-			
-			arbol2Collider.u = glm::quat_cast(ColliderMatrixArbol2);
-			ColliderMatrixArbol2 = glm::scale(ColliderMatrixArbol2, glm::vec3(1.0));
-			ColliderMatrixArbol2 = glm::translate(ColliderMatrixArbol2, modelArbol2.getObb().c);
-			arbol2Collider.c = ColliderMatrixArbol2[3];
-			arbol2Collider.e = modelArbol2.getObb().e * glm::vec3(0.1, 1.0, 0.1);
-			std::get<0>(collidersOBB.find("arbol_2-" + std::to_string(i))->second) = arbol2Collider;
-
-			addOrUpdateColliders(collidersOBB, "arbol_2-" + std::to_string(i), arbol2Collider,
-								 ColliderMatrixArbol2);
-		}*/
 
 		// Colliders de arboles otoño
 		for (int i = 0; i < arbolOtonoPosition.size(); i++)
@@ -1991,206 +2077,28 @@ void applicationLoop()
 			}
 		}
 
-		// Animaciones por keyframes dart Vader
-		// Para salvar los keyframes
-		/*if(record && modelSelected == 1){
-			matrixDartJoints.push_back(rotDartHead);
-			matrixDartJoints.push_back(rotDartLeftArm);
-			matrixDartJoints.push_back(rotDartLeftHand);
-			matrixDartJoints.push_back(rotDartRightArm);
-			matrixDartJoints.push_back(rotDartRightHand);
-			matrixDartJoints.push_back(rotDartLeftLeg);
-			matrixDartJoints.push_back(rotDartRightLeg);
-			if(saveFrame){
-				saveFrame = false;
-				appendFrame(myfile, matrixDartJoints);
-			}
-		}
-		else if(keyFramesDartJoints.size() > 0){
-			// Para reproducir el frame
-			interpolationDartJoints = numPasosDartJoints / (float) maxNumPasosDartJoints;
-			numPasosDartJoints++;
-			if(interpolationDartJoints > 1.0){
-				interpolationDartJoints = 0;
-				numPasosDartJoints = 0;
-				indexFrameDartJoints = indexFrameDartJointsNext;
-				indexFrameDartJointsNext++;
-			}
-			if(indexFrameDartJointsNext > keyFramesDartJoints.size() -1)
-				indexFrameDartJointsNext = 0;
-			rotDartHead = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 0, interpolationDartJoints);
-			rotDartLeftArm = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 1, interpolationDartJoints);
-			rotDartLeftHand = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 2, interpolationDartJoints);
-			rotDartRightArm = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 3, interpolationDartJoints);
-			rotDartRightHand = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 4, interpolationDartJoints);
-			rotDartLeftLeg = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 5, interpolationDartJoints);
-			rotDartRightLeg = interpolate(keyFramesDartJoints, indexFrameDartJoints, indexFrameDartJointsNext, 6, interpolationDartJoints);
-		}
-		if(record && modelSelected == 2){
-			matrixDart.push_back(modelMatrixDart);
-			if(saveFrame){
-				saveFrame = false;
-				appendFrame(myfile, matrixDart);
-			}
-		}
-		else if(keyFramesDart.size() > 0){
-			interpolationDart = numPasosDart / (float) maxNumPasosDart;
-			numPasosDart++;
-			if(interpolationDart > 1.0){
-				numPasosDart = 0;
-				interpolationDart = 0;
-				indexFrameDart = indexFrameDartNext;
-				indexFrameDartNext++;
-			}
-			if(indexFrameDartNext > keyFramesDart.size() - 1)
-				indexFrameDartNext = 0;
-			modelMatrixDart = interpolate(keyFramesDart, indexFrameDart, indexFrameDartNext, 0, interpolationDart);
-		}*/
-		// Animaciones por keyframes buzz
-		// Para salvar los keyframes
-		/*if(record && modelSelected == 3){
-			matrixBuzzJoints.push_back(rotBuzzHead);
-			matrixBuzzJoints.push_back(rotBuzzLeftarm);
-			matrixBuzzJoints.push_back(rotBuzzLeftForeArm);
-			matrixBuzzJoints.push_back(rotBuzzLeftHand);
-			if(saveFrame){
-				saveFrame = false;
-				appendFrame(myfile, matrixBuzzJoints);
-			}
-		}
-		else if(keyFramesBuzzJoints.size() > 0){
-			// Para reproducir el frame
-			interpolationBuzzJoints = numPasosBuzzJoints / (float) maxNumPasosBuzzJoints;
-			numPasosBuzzJoints++;
-			if(interpolationBuzzJoints > 1.0){
-				interpolationBuzzJoints = 0;
-				numPasosBuzzJoints = 0;
-				indexFrameBuzzJoints = indexFrameBuzzJointsNext;
-				indexFrameBuzzJointsNext++;
-			}
-			if(indexFrameBuzzJointsNext > keyFramesBuzzJoints.size() -1)
-				indexFrameBuzzJointsNext = 0;
-			rotBuzzHead = interpolate(keyFramesBuzzJoints, indexFrameBuzzJoints, indexFrameBuzzJointsNext, 0, interpolationBuzzJoints);
-			rotBuzzLeftarm = interpolate(keyFramesBuzzJoints, indexFrameBuzzJoints, indexFrameBuzzJointsNext, 1, interpolationBuzzJoints);
-			rotBuzzLeftForeArm = interpolate(keyFramesBuzzJoints, indexFrameBuzzJoints, indexFrameBuzzJointsNext, 2, interpolationBuzzJoints);
-			rotBuzzLeftHand = interpolate(keyFramesBuzzJoints, indexFrameBuzzJoints, indexFrameBuzzJointsNext, 3, interpolationBuzzJoints);
-		}
-		if(record && modelSelected == 4){
-			matrixBuzz.push_back(modelMatrixBuzz);
-			if(saveFrame){
-				saveFrame = false;
-				appendFrame(myfile, matrixBuzz);
-			}
-		}
-		else if(keyFramesBuzz.size() > 0){
-			interpolationBuzz = numPasosBuzz / (float) maxNumPasosBuzz;
-			numPasosBuzz++;
-			if(interpolationBuzz > 1.0){
-				numPasosBuzz = 0;
-				interpolationBuzz = 0;
-				indexFrameBuzz = indexFrameBuzzNext;
-				indexFrameBuzzNext++;
-			}
-			if(indexFrameBuzzNext > keyFramesBuzz.size() - 1)
-				indexFrameBuzzNext = 0;
-			modelMatrixBuzz = interpolate(keyFramesBuzz, indexFrameBuzz, indexFrameBuzzNext, 0, interpolationBuzz);
-		}*/
-
-		/**********Maquinas de estado*************/
-		// Maquina de estados para el carro eclipse
-		/*switch (state){
-		case 0:
-			if(numberAdvance == 0)
-				maxAdvance = 65.0;
-			else if(numberAdvance == 1)
-				maxAdvance = 49.0;
-			else if(numberAdvance == 2)
-				maxAdvance = 44.5;
-			else if(numberAdvance == 3)
-				maxAdvance = 49.0;
-			else if(numberAdvance == 4)
-				maxAdvance = 44.5;
-			state = 1;
-			break;
-		case 1:
-			modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0f, 0.0f, avance));
-			advanceCount += avance;
-			rotWheelsX += 0.05;
-			rotWheelsY -= 0.02;
-			if(rotWheelsY < 0)
-				rotWheelsY = 0;
-			if(advanceCount > maxAdvance){
-				advanceCount = 0;
-				numberAdvance++;
-				state = 2;
-			}
-			break;
-		case 2:
-			modelMatrixEclipse = glm::translate(modelMatrixEclipse, glm::vec3(0.0, 0.0, 0.025f));
-			modelMatrixEclipse = glm::rotate(modelMatrixEclipse, glm::radians(giroEclipse), glm::vec3(0, 1, 0));
-			rotCount += giroEclipse;
-			rotWheelsX += 0.05;
-			rotWheelsY += 0.02;
-			if(rotWheelsY > 0.25)
-				rotWheelsY = 0.25;
-			if(rotCount >= 90.0f){
-				rotCount = 0;
-				state = 0;
-				if(numberAdvance > 4)
-					numberAdvance = 1;
-			}
-			break;
-
-		default:
-			break;
-		}
-
-		// Maquina de estado de lambo
-		switch (stateDoor)
-		{
-		case 0:
-			dorRotCount += 0.5;
-			if(dorRotCount > 75)
-				stateDoor = 1;
-			break;
-		case 1:
-			dorRotCount -= 0.5;
-			if(dorRotCount < 0){
-				dorRotCount = 0.0;
-				stateDoor = 0;
-			}
-
-		default:
-			break;
-		}*/
-
-		// Constantes de animaciones
-		// rotHelHelY += 0.5;
-		// rotHelHelBack += 0.5;
-
-		if (isFirstPerson) {
-			renderCrosshair();
-		}
+		/**********Render de transparencias***************/
+		renderAlphaScene();
 
 		glfwSwapBuffers(window);
 
 		/****************************+
 		 * OpenAL sound data
 		 ****************************/
-		source0Pos[0] = ranaPosition[0].x;
-		source0Pos[1] = ranaPosition[0].y;
-		source0Pos[2] = ranaPosition[0].z;
-		alSourcefv(source[0], AL_POSITION, source0Pos);
+		source1Pos[0] = ranaPosition[0].x;
+		source1Pos[1] = ranaPosition[0].y;
+		source1Pos[2] = ranaPosition[0].z;
+		alSourcefv(source[1], AL_POSITION, source1Pos);
 
-		/*source1Pos[0] = modelMatrixFogata[3].x;
-		source1Pos[1] = modelMatrixFogata[3].y;
-		source1Pos[2] = modelMatrixFogata[3].z;
-		alSourcefv(source[1], AL_POSITION, source1Pos);*/
-		
-		/*source2Pos[0] = modelMatrixDart[3].x;
-		source2Pos[1] = modelMatrixDart[3].y;
-		source2Pos[2] = modelMatrixDart[3].z;
-		alSourcefv(source[2], AL_POSITION, source2Pos);*/
+		/*source2Pos[0] = ranaPosition[1].x;
+		source2Pos[1] = ranaPosition[1].y;
+		source2Pos[2] = ranaPosition[1].z;
+		alSourcefv(source[2], AL_POSITION, source2Pos);
+
+		source3Pos[0] = ranaPosition[2].x;
+		source3Pos[1] = ranaPosition[2].y;
+		source3Pos[2] = ranaPosition[2].z;
+		alSourcefv(source[3], AL_POSITION, source3Pos);*/
 
 		// Listener for the Thris person camera
 		listenerPos[0] = modelMatrixCazador[3].x;
