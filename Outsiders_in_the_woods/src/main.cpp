@@ -41,6 +41,9 @@
 
 #include "Headers/Colisiones.h"
 
+// OpenAL include
+#include <AL/alut.h>
+
 #define ARRAY_SIZE_IN_ELEMENTS(a) (sizeof(a) / sizeof(a[0]))
 
 // Constantes globales
@@ -57,6 +60,8 @@ Shader shaderSkybox;
 Shader shaderMulLighting;
 // Shader para el terreno
 Shader shaderTerrain;
+// Shader para dibujar un objeto con solo textura
+Shader shaderTexture;
 
 Shader shaderCrosshair;
 
@@ -85,14 +90,12 @@ float cameraSensitivity = 0.4f;
 float joystickSensitivity = 0.5f;  // Sensibilidad del joystick
 float joystickDeadzone = 0.2f;     // Zona muerta del joystick
 bool isAiming = false;  
-// Variables to animations keyframes
-//bool saveFrame = false, availableSave = true;
-//std::ofstream myfile;
-//std::string fileName = "";
-//bool record = false;
 
 double deltaTime;
 double currTime, lastTime;
+
+// Inicio de partida
+bool iniciaPartida = false, presionarOpcion = false;
 
 // Variables de salto
 bool isJump = false;
@@ -153,16 +156,6 @@ std::vector<glm::vec3> arbol1Position = {
 	glm::vec3(-19, 0, 58), glm::vec3(21, 0, 54), glm::vec3(12, 0, -4)
 };
 
-// Arboles tipo 2
-/*Model modelArbol2;
-// Posicionamiento de cada arbol
-std::vector<glm::vec3> arbol2Position = {
-	glm::vec3(-67, 0, -62), glm::vec3(-3, 0, -93), glm::vec3(75, 0, -48), 
-	glm::vec3(95, 0, 93), glm::vec3(-81, 0, 70), glm::vec3(-43, 0, 90),
-	glm::vec3(37, 0, 86), glm::vec3(73, 0, 14), glm::vec3(-21, 0, 38),
-	glm::vec3(-12, 0, -38),
-};*/
-
 // Arboles otoño
 Model modelArbolOtono;
 // Posicionamiento de cada arbol
@@ -209,6 +202,15 @@ std::vector<float> troncoOrientation = {
 	0, 30, 60, 90, 120, 150, 180
 };
 
+// Ranas
+Model modelRana;
+// Posicionamiento de cada rana
+std::vector<glm::vec3> ranaPosition = {
+	glm::vec3(-56, 0, -64), glm::vec3(-63, 0, -22), glm::vec3(29, 0, -72)
+};
+// Ángulo de orientación
+std::vector<float> ranaOrientation = {0, 90, 180};
+
 // Personaje principal
 Model modelCazador;
 glm::mat4 modelMatrixCazador = glm::mat4(1.0f);
@@ -223,7 +225,6 @@ Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
 GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID, crosshairTextureID;
-
 GLuint crosshairVAO, crosshairVBO;
 
 GLenum types[6] = {
@@ -247,13 +248,31 @@ std::string fileNames[6] = {
 std::map<std::string, std::tuple<AbstractModel::SBB, glm::mat4, glm::mat4>> collidersSBB;
 std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>> collidersOBB;
 
-/*std::vector<glm::vec3> lamp2Position = {
-	glm::vec3(-36.52, 0, -23.24),
-	glm::vec3(-52.73, 0, -3.90)
-};
-std::vector<float> lamp2Orientation = {
-	21.37 + 90, -65.0 + 90
-};*/
+// OpenAL Defines
+#define NUM_BUFFERS 1
+#define NUM_SOURCES 1
+#define NUM_ENVIRONMENTS 1
+// Listener
+ALfloat listenerPos[] = { 0.0, 0.0, 4.0 };
+ALfloat listenerVel[] = { 0.0, 0.0, 0.0 };
+ALfloat listenerOri[] = { 0.0, 0.0, 1.0, 0.0, 1.0, 0.0 };
+// Source 0 rana 0
+ALfloat source0Pos[] = { 0.0, 0.0, 0.0 };
+ALfloat source0Vel[] = { 0.0, 0.0, 0.0 };
+/*/ Source 1 fuego
+ALfloat source1Pos[] = { 0.0, 0.0, 0.0 };
+ALfloat source1Vel[] = { 0.0, 0.0, 0.0 };*/
+// Buffers
+ALuint buffer[NUM_BUFFERS];
+ALuint source[NUM_SOURCES];
+ALuint environment[NUM_ENVIRONMENTS];
+// Configs
+ALsizei size, freq;
+ALenum format;
+ALvoid *data;
+int ch;
+ALboolean loop;
+std::vector<bool> sourcesPlay = {true};
 
 // Se definen todos las funciones.
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes);
@@ -342,11 +361,11 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Inicialización de los shaders
 	shader.initialize("../Shaders/colorShader.vs", "../Shaders/colorShader.fs");
 	shaderCrosshair.initialize("../Shaders/crosshair.vs", "../Shaders/crosshair.fs");
+	shaderTexture.initialize("../Shaders/texturizado.vs", "../Shaders/texturizado.fs");
 	// Shaders con neblina
 	shaderSkybox.initialize("../Shaders/skyBox.vs", "../Shaders/skyBox_fog.fs");
 	shaderMulLighting.initialize("../Shaders/iluminacion_textura_animation_fog.vs", "../Shaders/multipleLights_fog.fs");
 	shaderTerrain.initialize("../Shaders/terrain_fog.vs", "../Shaders/terrain_fog.fs");
-
 	float crosshairVertices[] = {
         // Pos      // TexCoords
         -0.05f,  0.05f, 0.0f, 0.0f, 1.0f,
@@ -385,6 +404,9 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	modeloRayo.init();
 	modeloRayo.setShader(&shader);
 	modeloRayo.setColor(glm::vec4(1.0, 1.0, 1.0, 0.3));
+	//boxIntro.init();
+	//boxIntro.setShader(&shaderTexture);
+	//boxIntro.setScale(glm::vec3(2.0, 2.0, 1.0));
 
 	// Casa de campaña
 	modelCasaCamp.loadModel("../models/casa_camp/casa_camp.obj");
@@ -402,9 +424,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	modelLampPost2.loadModel("../models/Street_Light/LampPost.obj");
 	modelLampPost2.setShader(&shaderMulLighting);*/
 
-	// Arboles tipo 2
-	/*modelArbol2.loadModel("../models/arbol2/arbol.obj");
-	modelArbol2.setShader(&shaderMulLighting);*/
 
 	// Arboles otoño
 	modelArbolOtono.loadModel("../models/arbol_otono/arbol_otono.obj");
@@ -421,6 +440,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Troncos
 	modelTronco.loadModel("../models/troncos/troncoarbol.obj");
 	modelTronco.setShader(&shaderMulLighting);
+
+	// Ranas
+	modelRana.loadModel("../models/rana/rana.fbx");
+	modelRana.setShader(&shaderMulLighting);
 
 	// Personaje principal
 	modelCazador.loadModel("../models/swat/Swat.fbx");
@@ -708,6 +731,59 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	else
 		std::cout << "Fallo la carga de textura" << std::endl;
 	textureBlendMap.freeImage(); // Liberamos memoria
+
+	/*******************************************
+	 * OpenAL init
+	 *******************************************/
+	alutInit(0, nullptr);
+	alListenerfv(AL_POSITION, listenerPos);
+	alListenerfv(AL_VELOCITY, listenerVel);
+	alListenerfv(AL_ORIENTATION, listenerOri);
+	alGetError(); // clear any error messages
+	if (alGetError() != AL_NO_ERROR) {
+		printf("- Error creating buffers !!\n");
+		exit(1);
+	}
+	else {
+		printf("init() - No errors yet.");
+	}
+	// Generate buffers, or else no sound will happen!
+	alGenBuffers(NUM_BUFFERS, buffer);
+	buffer[0] = alutCreateBufferFromFile("../sounds/rana.wav");
+	//buffer[1] = alutCreateBufferFromFile("../sounds/fire.wav");
+	int errorAlut = alutGetError();
+	if (errorAlut != ALUT_ERROR_NO_ERROR){
+		printf("- Error open files with alut %d !!\n", errorAlut);
+		exit(2);
+	}
+
+	alGetError(); /* clear error */
+	alGenSources(NUM_SOURCES, source);
+
+	if (alGetError() != AL_NO_ERROR) {
+		printf("- Error creating sources !!\n");
+		exit(2);
+	}
+	else {
+		printf("init - no errors after alGenSources\n");
+	}
+	// Configuración de sonido de rana 0
+	alSourcef(source[0], AL_PITCH, 1.0f);
+	alSourcef(source[0], AL_GAIN, 1.0f);
+	alSourcefv(source[0], AL_POSITION, source0Pos);
+	alSourcefv(source[0], AL_VELOCITY, source0Vel);
+	alSourcei(source[0], AL_BUFFER, buffer[0]);
+	alSourcei(source[0], AL_LOOPING, AL_TRUE);
+	alSourcef(source[0], AL_MAX_DISTANCE, 200);
+
+	/*/ Configuración de sonido de fuego
+	alSourcef(source[1], AL_PITCH, 1.0f);
+	alSourcef(source[1], AL_GAIN, 1.0f);
+	alSourcefv(source[1], AL_POSITION, source1Pos);
+	alSourcefv(source[1], AL_VELOCITY, source1Vel);
+	alSourcei(source[1], AL_BUFFER, buffer[1]);
+	alSourcei(source[1], AL_LOOPING, AL_TRUE);
+	alSourcef(source[1], AL_MAX_DISTANCE, 200);*/
 }
 
 void destroy()
@@ -730,9 +806,9 @@ void destroy()
 	modelCasaCamp.destroy();
 	modelFogata.destroy();
 	modelArbol1.destroy();
-	//modelArbol2.destroy();
 	modelArbolOtono.destroy();
 	modelPlanta.destroy();
+	modelRana.destroy();
 	modelYerba.destroy();
 	modelTronco.destroy();
 	modelCazador.destroy();
@@ -757,6 +833,10 @@ void destroy()
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	glDeleteTextures(1, &skyboxTextureID);
 	glDeleteTextures(1, &crosshairTextureID);
+	
+	// OpenAL destroy
+	alDeleteSources(NUM_SOURCES, source);
+    alDeleteBuffers(NUM_BUFFERS, buffer);
 }
 
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes)
@@ -820,6 +900,23 @@ bool processInput(bool continueApplication)
 	{
 		return false;
 	}
+
+	/*if(!iniciaPartida){
+		bool presionarEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
+		if(textureActivaID == textureInit1ID && presionarEnter){
+			iniciaPartida = true;
+			textureActivaID = textureScreenID;
+		}
+		else if(!presionarOpcion && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+			presionarOpcion = true;
+			if(textureActivaID == textureInit1ID)
+				textureActivaID = textureInit2ID;
+			else if(textureActivaID == textureInit2ID)
+				textureActivaID = textureInit1ID;
+		}
+		else if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE)
+			presionarOpcion = false;
+	}*/
 
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE) {
 		int axesCount, buttonCount;
@@ -1450,28 +1547,16 @@ void applicationLoop()
 		shaderTerrain.setFloat("pointLights[0].linear", 0.09);
 		shaderTerrain.setFloat("pointLights[0].quadratic", 0.02);
 
-
-		/*for(int i = 0; i < lamp2Position.size(); i++){
-			glm::mat4 matrixAdjustLamp = glm::mat4(1.0);
-			matrixAdjustLamp = glm::translate(matrixAdjustLamp, lamp2Position[i]);
-			matrixAdjustLamp = glm::rotate(matrixAdjustLamp, glm::radians(lamp2Orientation[i]), glm::vec3(0, 1, 0));
-			matrixAdjustLamp = glm::scale(matrixAdjustLamp, glm::vec3(1.0));
-			matrixAdjustLamp = glm::translate(matrixAdjustLamp, glm::vec3(0.75, 5.0, 0));
-			glm::vec3 lampPosition = glm::vec3(matrixAdjustLamp[3]);
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.01)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.02)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
-			shaderMulLighting.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].position", glm::value_ptr(lampPosition));
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].constant", 1.0);
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].linear", 0.09);
-			shaderMulLighting.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].quadratic", 0.02);
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.ambient", glm::value_ptr(glm::vec3(0.2, 0.16, 0.01)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.diffuse", glm::value_ptr(glm::vec3(0.4, 0.32, 0.02)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].light.specular", glm::value_ptr(glm::vec3(0.6, 0.58, 0.03)));
-			shaderTerrain.setVectorFloat3("pointLights[" + std::to_string(lamp1Position.size() + i) + "].position", glm::value_ptr(lampPosition));
-			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].constant", 1.0);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].linear", 0.09);
-			shaderTerrain.setFloat("pointLights[" + std::to_string(lamp1Position.size() + i) + "].quadratic", 0.02);
+		/************Render de imagen de frente**************/
+		/*if(!iniciaPartida){
+			shaderTexture.setMatrix4("projection", 1, false, glm::value_ptr(glm::mat4(1.0)));
+			shaderTexture.setMatrix4("view", 1, false, glm::value_ptr(glm::mat4(1.0)));
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textureActivaID);
+			shaderTexture.setInt("outTexture", 0);
+			boxIntro.render();
+			glfwSwapBuffers(window);
+			continue;
 		}*/
 
 		/*******************************************
@@ -1523,14 +1608,6 @@ void applicationLoop()
 			modelArbol1.render();
 		}
 
-		// Renderizado de arboles tipo 2
-		/*for (int i = 0; i < arbol2Position.size(); i++)
-		{
-			arbol2Position[i].y = terrain.getHeightTerrain(arbol2Position[i].x, arbol2Position[i].z);
-			modelArbol2.setPosition(arbol2Position[i]);
-			modelArbol2.render();
-		}*/
-
 		// Renderizado de arboles otoño
 		for (int i = 0; i < arbolOtonoPosition.size(); i++){
 			arbolOtonoPosition[i].y = terrain.getHeightTerrain(arbolOtonoPosition[i].x, arbolOtonoPosition[i].z);
@@ -1563,6 +1640,14 @@ void applicationLoop()
 		/*****************************************
 		 * Objetos animados por huesos
 		 * **************************************/
+		// Renderizado de ranas
+		for (int i = 0; i < ranaPosition.size(); i++) {
+			ranaPosition[i].y = terrain.getHeightTerrain(ranaPosition[i].x, ranaPosition[i].z);
+			modelRana.setPosition(ranaPosition[i]);
+			modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
+			modelRana.render();
+		}
+
 		// Personaje principal
 		/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
 		glm::vec3 ejex = glm::vec3(modelMatrixCazador[0]);
@@ -2088,6 +2173,60 @@ void applicationLoop()
 		}
 
 		glfwSwapBuffers(window);
+
+		/****************************+
+		 * OpenAL sound data
+		 ****************************/
+		source0Pos[0] = ranaPosition[0].x;
+		source0Pos[1] = ranaPosition[0].y;
+		source0Pos[2] = ranaPosition[0].z;
+		alSourcefv(source[0], AL_POSITION, source0Pos);
+
+		/*source1Pos[0] = modelMatrixFogata[3].x;
+		source1Pos[1] = modelMatrixFogata[3].y;
+		source1Pos[2] = modelMatrixFogata[3].z;
+		alSourcefv(source[1], AL_POSITION, source1Pos);*/
+		
+		/*source2Pos[0] = modelMatrixDart[3].x;
+		source2Pos[1] = modelMatrixDart[3].y;
+		source2Pos[2] = modelMatrixDart[3].z;
+		alSourcefv(source[2], AL_POSITION, source2Pos);*/
+
+		// Listener for the Thris person camera
+		listenerPos[0] = modelMatrixCazador[3].x;
+		listenerPos[1] = modelMatrixCazador[3].y;
+		listenerPos[2] = modelMatrixCazador[3].z;
+		alListenerfv(AL_POSITION, listenerPos);
+
+		glm::vec3 upModel = glm::normalize(modelMatrixCazador[1]);
+		glm::vec3 frontModel = glm::normalize(modelMatrixCazador[2]);
+
+		listenerOri[0] = frontModel.x;
+		listenerOri[1] = frontModel.y;
+		listenerOri[2] = frontModel.z;
+		listenerOri[3] = upModel.x;
+		listenerOri[4] = upModel.y;
+		listenerOri[5] = upModel.z;
+
+		// Listener for the First person camera
+		// listenerPos[0] = camera->getPosition().x;
+		// listenerPos[1] = camera->getPosition().y;
+		// listenerPos[2] = camera->getPosition().z;
+		// alListenerfv(AL_POSITION, listenerPos);
+		// listenerOri[0] = camera->getFront().x;
+		// listenerOri[1] = camera->getFront().y;
+		// listenerOri[2] = camera->getFront().z;
+		// listenerOri[3] = camera->getUp().x;
+		// listenerOri[4] = camera->getUp().y;
+		// listenerOri[5] = camera->getUp().z;
+		alListenerfv(AL_ORIENTATION, listenerOri);
+
+		for(unsigned int i = 0; i < sourcesPlay.size(); i++){
+			if(sourcesPlay[i]){
+				sourcesPlay[i] = false;
+				alSourcePlay(source[i]);
+			}
+		}
 	}
 }
 
