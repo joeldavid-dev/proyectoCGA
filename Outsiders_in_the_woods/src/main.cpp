@@ -82,9 +82,7 @@ Box boxIntro;
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
 int lastMousePosY, offsetY = 0;
-//float rotDartHead = 0.0, rotDartLeftArm = 0.0, rotDartLeftHand = 0.0, rotDartRightArm = 0.0, rotDartRightHand = 0.0, rotDartLeftLeg = 0.0, rotDartRightLeg = 0.0;
-//float rotBuzzHead = 0.0, rotBuzzLeftarm = 0.0, rotBuzzLeftForeArm = 0.0, rotBuzzLeftHand = 0.0;
-int modelSelected = 0;
+int modelSelected = 0; // deprecated
 bool enableCountSelected = true;
 bool enableActionKeyF = true;
 
@@ -118,9 +116,19 @@ glm::vec3 direccionLuz = glm::vec3(1.0);
 bool isLampON = false;
 bool enableActionKeyL = false;
 
-//camara primera persona
+// camara primera persona
 bool isFirstPerson = false;
 bool enableActionKeyV = true;
+
+// Maquina de estados general
+int nivel = 0;
+int vidas = 3;
+int alienCount = 0;
+std::string infoTexto = "";
+bool renderizarAlien = false;
+bool renderizarVenado = false;
+bool controlarPersonaje = false;
+
 
 // Definición de los modelos ======================================
 // Aquí se definen los modelos, matrices y variables requeridas por
@@ -1034,17 +1042,21 @@ bool processInput(bool continueApplication)
 			iniciaPartida = true;
 			textureActivaID = textureScreenID;
 		}
-		else if(!presionarOpcion && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+		else if (textureActivaID == textureInit2ID && presionarEnter){
+			exitApp = true;
+		}
+		else if(!presionarOpcion && (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)){
 			presionarOpcion = true;
 			if(textureActivaID == textureInit1ID)
 				textureActivaID = textureInit2ID;
 			else if(textureActivaID == textureInit2ID)
 				textureActivaID = textureInit1ID;
 		}
-		else if(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE)
+		else if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_RELEASE)
 			presionarOpcion = false;
 	}
 
+	// JOYSTICK =============================================================
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE) {
 		int axesCount, buttonCount;
 		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axesCount);
@@ -1081,11 +1093,11 @@ bool processInput(bool continueApplication)
 		}
 
 		// Salto con botón A (0)
-		if (!isJump && buttons[0] == GLFW_PRESS) {
+		/*if (!isJump && buttons[0] == GLFW_PRESS) {
 			isJump = true;
 			tmv = 0;
 			startTimeJump = currTime;
-		}
+		}*/
 
 		// Linterna con botón Y (3)
 		if (buttons[3] == GLFW_PRESS && enableActionKeyL) {
@@ -1109,20 +1121,6 @@ bool processInput(bool continueApplication)
 			enableActionKeyT = true;
 		}
 	}
-
-	if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
-		enableActionKeyV = false;
-		isFirstPerson = !isFirstPerson;
-		if (isFirstPerson) {
-			camera->setDistanceFromTarget(0.0f);
-		} else {
-			camera->setDistanceFromTarget(distanceFromTarget);
-		}
-	}
-	else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
-		enableActionKeyV = true;
-	}
-
 
 	// Movimientos del personaje principal con control de xbox
 	if (glfwJoystickPresent(GLFW_JOYSTICK_1) == GL_TRUE)
@@ -1165,6 +1163,21 @@ bool processInput(bool continueApplication)
 			tmv = 0;
 			startTimeJump = currTime;
 		}
+	}
+	// ==========================================================================
+
+	// Cambio de cámara de primera o tercera persona
+	if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+		enableActionKeyV = false;
+		isFirstPerson = !isFirstPerson;
+		if (isFirstPerson) {
+			camera->setDistanceFromTarget(0.0f);
+		} else {
+			camera->setDistanceFromTarget(distanceFromTarget);
+		}
+	}
+	else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
+		enableActionKeyV = true;
 	}
 
 	// Control con el ratón
@@ -1268,139 +1281,8 @@ bool processInput(bool continueApplication)
 	{
 		enableActionKeyT = true;
 	}
-	// Seleccionar modelo
-	/*if (enableCountSelected && glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS){
-		enableCountSelected = false;
-		modelSelected++;
-		if(modelSelected > 4)
-			modelSelected = 0;
-		if(modelSelected == 1)
-			fileName = "../animaciones/animation_dart_joints.txt";
-		if (modelSelected == 2)
-			fileName = "../animaciones/animation_dart.txt";
-		if(modelSelected == 3)
-			fileName = "../animaciones/animation_buzz_joints.txt";
-		if (modelSelected == 4)
-			fileName = "../animaciones/animation_buzz.txt";
-		std::cout << "modelSelected: " << modelSelected << std::endl;
-	}
-	else if(glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE)
-		enableCountSelected = true;*/
-
-	// Guardar key frames
-	/*if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = true;
-		if(myfile.is_open())
-			myfile.close();
-		myfile.open(fileName);
-	}
-	if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE
-			&& glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS){
-		record = false;
-		myfile.close();
-		if(modelSelected == 1)
-			keyFramesDartJoints = getKeyRotFrames(fileName);
-		if (modelSelected == 2)
-			keyFramesDart = getKeyFrames(fileName);
-		if(modelSelected == 3)
-			keyFramesBuzzJoints = getKeyRotFrames(fileName);
-		if (modelSelected == 4)
-			keyFramesBuzz = getKeyFrames(fileName);
-	}
-	if(availableSave && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS){
-		saveFrame = true;
-		availableSave = false;
-	}if(glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
-		availableSave = true;*/
-
-	// Dart Lego model movements
-	/*if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotDartHead -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotDartLeftArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotDartRightArm -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotDartLeftHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS)
-		rotDartRightHand -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_6) == GLFW_PRESS)
-		rotDartLeftLeg -= 0.02;
-	if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg += 0.02;
-	else if (modelSelected == 1 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_7) == GLFW_PRESS)
-		rotDartRightLeg -= 0.02;
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, 0.02f, glm::vec3(0, 1, 0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		modelMatrixDart = glm::rotate(modelMatrixDart, -0.02f, glm::vec3(0, 1, 0));
-	if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(-0.02, 0.0, 0.0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixDart = glm::translate(modelMatrixDart, glm::vec3(0.02, 0.0, 0.0));*/
-
-	// Movimientos de buzz
-	/*if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotBuzzHead += 0.02;
-	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-		rotBuzzHead -= 0.02;
-	if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotBuzzLeftarm += 0.02;
-	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-		rotBuzzLeftarm -= 0.02;
-	if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotBuzzLeftForeArm += 0.02;
-	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)
-		rotBuzzLeftForeArm -= 0.02;
-	if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotBuzzLeftHand += 0.02;
-	else if (modelSelected == 3 && glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-			glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)
-		rotBuzzLeftHand -= 0.02;
-	if (modelSelected == 4 && glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-		modelMatrixBuzz = glm::rotate(modelMatrixBuzz, 0.02f, glm::vec3(0, 1, 0));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-		modelMatrixBuzz = glm::rotate(modelMatrixBuzz, -0.02f, glm::vec3(0, 1, 0));
-	if (modelSelected == 4 && glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-		modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(0.0, 0.0, 0.02));
-	else if (modelSelected == 2 && glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-		modelMatrixBuzz = glm::translate(modelMatrixBuzz, glm::vec3(0.0, 0.0, -0.02));*/
-
-	// Controles del personaje principal
+	
+	// Controles del personaje principal con teclado
 	if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS))
 	{
 		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.1, 0.0, 0.0));
@@ -1651,7 +1533,7 @@ void renderAlphaScene(bool render = true){
 		boxIntro.render();
 		glDisable(GL_BLEND);
 
-		modelText->render("Texto en OpenGL", -1, 0,1,0,0,24);
+		modelText->render(infoTexto, -0.95, 0.9,1,1,1,24);
 	}
 }
 
@@ -1740,8 +1622,6 @@ void applicationLoop()
 				angleTarget = 0.0;
 			if (axis.y < 0)
 				angleTarget = -angleTarget;
-			if (modelSelected == 1)
-				angleTarget -= glm::radians(90.0f);
 			camera->setAngleTarget(angleTarget);
 		}
 
@@ -2154,8 +2034,48 @@ void applicationLoop()
 
 		/**********Render de transparencias***************/
 		renderAlphaScene();
-
 		glfwSwapBuffers(window);
+
+		/**************************MAQUINA DE EDOS VENADO************************************** */
+
+		switch (state){
+		case 0:
+			if(numberAdvance == 0)
+				maxAdvance = 12.0;
+			else if(numberAdvance == 1)
+				maxAdvance = 0.0;
+			state = 1;
+			break;
+		case 1:
+			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0f, 0.0f, avance));
+			advanceCount += avance;
+			if(advanceCount > maxAdvance){
+				advanceCount = 0;
+				numberAdvance++;
+				state = 2;
+			}
+			break;
+		case 2:
+			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0, 0.0, 0.025f));
+			modelMatrixVenado = glm::scale(modelMatrixVenado,  glm::vec3(0, desaparece, 0));
+				if(numberAdvance > 0)
+					numberAdvance = 1;
+			
+			break;
+		
+		default:
+			break;
+		}
+
+		/*************************************************************************
+		 * Maquina de estados general. Funcionalidad del juego.
+		 *************************************************************************/
+		switch (nivel){
+			case 0:
+			// Introducción
+			infoTexto = "Introduccion";
+			
+		}
 
 		/****************************+
 		 * OpenAL sound data
@@ -2210,42 +2130,12 @@ void applicationLoop()
 				alSourcePlay(source[i]);
 			}
 		}
-		/**************************MAQUINA DE EDOS VENADO************************************** */
-
-		switch (state){
-		case 0:
-			if(numberAdvance == 0)
-				maxAdvance = 12.0;
-			else if(numberAdvance == 1)
-				maxAdvance = 0.0;
-			state = 1;
-			break;
-		case 1:
-			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0f, 0.0f, avance));
-			advanceCount += avance;
-			if(advanceCount > maxAdvance){
-				advanceCount = 0;
-				numberAdvance++;
-				state = 2;
-			}
-			break;
-		case 2:
-			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0, 0.0, 0.025f));
-			modelMatrixVenado = glm::scale(modelMatrixVenado,  glm::vec3(0, desaparece, 0));
-				if(numberAdvance > 0)
-					numberAdvance = 1;
-			
-			break;
-		
-		default:
-			break;
-		}
 	}
 }
 
-int main(int argc, char **argv)
-{
-	init(1000, 700, "Window GLFW", false);
+int main(int argc, char **argv){
+	// Relacion de aspecto 16:9
+	init(992, 558, "Outsiders in the woods", false);
 	applicationLoop();
 	destroy();
 	return 1;
