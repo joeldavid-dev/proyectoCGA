@@ -1,5 +1,5 @@
 #version 330 core
-const int MAX_BONES = 100;
+const int MAX_BONES = 150;
 layout (location = 0) in vec3 in_position;
 layout (location = 2) in vec2 in_uv;
 layout (location = 3) in vec3 in_normal;

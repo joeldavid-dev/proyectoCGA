@@ -215,6 +215,36 @@ std::vector<glm::vec3> ranaPosition = {
 // Ángulo de orientación
 std::vector<float> ranaOrientation = {0, 90, 180};
 
+//cocodrilo 
+Model modelCocodrilo; 
+
+//posicion del cocodrilo 
+std::vector<glm::vec3> cocodriloPosition = {
+	glm::vec3(-50.0, 0.0, -42.2), glm::vec3(-83.5,0,-78), glm::vec3(35.8,0,-78.2)
+};
+// Ángulo de orientación
+std::vector<float> cocodriloOrientation = {0, 90, 180};
+
+//VENADO 
+Model modelVenado; 
+float advanceCount;
+const float avance = 0.1;
+glm::mat4 modelMatrixVenado = glm::mat4(1.0f);
+//Murcielago 
+Model modelMurcielago; 
+std::vector<glm::vec3> murcielagoPosition = {
+	glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.5,0.0,-44.2),glm::vec3(-32.8,0.0,33.8),glm::vec3(79.2,0.0,-32.2),glm::vec3(26,0.0,-5.5)
+};
+//Angulo de orientacion 
+std::vector<float> murcielagoOrientation = {0, 90, 180};
+
+//maquina de edos venado 
+int state;
+int numberAdvance;
+float maxAdvance;
+int desaparece=0;
+int animationIndexVenado = 1;
+
 // Personaje principal
 Model modelCazador;
 glm::mat4 modelMatrixCazador = glm::mat4(1.0f);
@@ -439,7 +469,18 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Ranas
 	modelRana.loadModel("../models/rana/rana.fbx");
 	modelRana.setShader(&shaderMulLighting);
+	
+	//cocodrilo 
+	modelCocodrilo.loadModel("../models/cocodrilo/cocodrilo.fbx");
+	modelCocodrilo.setShader(&shaderMulLighting);
 
+
+	//venado 
+	modelVenado.loadModel("../models/venado/venado.fbx");
+	modelVenado.setShader(&shaderMulLighting);
+	//murcielago 
+	modelMurcielago.loadModel("../models/murcielago/murcielago6.fbx");
+	modelMurcielago.setShader(&shaderMulLighting);
 	// Personaje principal
 	modelCazador.loadModel("../models/swat/Swat.fbx");
 	modelCazador.setShader(&shaderMulLighting);
@@ -892,6 +933,10 @@ void destroy()
 	modelTronco.destroy();
 	modelCazador.destroy();
 	modelGun.destroy();
+	modelVenado.destroy();
+	modelMurcielago.destroy();
+	
+	modelCocodrilo.destroy();
 
 	// Terrains objects Delete
 	terrain.destroy();
@@ -1481,6 +1526,33 @@ void renderSolidScene(){
 		modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
 		modelRana.render();
 	}
+	
+	//renderizado murcielago 
+	// Renderizado de ranas
+	for (int i = 0; i < murcielagoPosition.size(); i++) {
+		murcielagoPosition[i].y = 5.0f;
+		modelMurcielago.setPosition(murcielagoPosition[i]);
+		modelMurcielago.setOrientation(glm::vec3(0, murcielagoOrientation[i], 0));
+		modelMurcielago.render();
+	}
+
+	
+	//renderizado cocodrilo 
+	
+	for (int i = 0; i < cocodriloPosition.size(); i++) {
+		cocodriloPosition[i].y = terrain.getHeightTerrain(cocodriloPosition[i].x, cocodriloPosition[i].z);
+		modelCocodrilo.setPosition(cocodriloPosition[i]);
+		modelCocodrilo.setOrientation(glm::vec3(0, cocodriloOrientation[i], 0));
+		modelCocodrilo.render();
+
+}
+
+	//venado 
+	modelMatrixVenado[3][1] = terrain.getHeightTerrain(modelMatrixVenado[3][0], modelMatrixVenado[3][2]);
+	modelVenado.setAnimationIndex(animationIndexVenado);
+	animationIndexVenado=1;
+	modelVenado.render(modelMatrixVenado);
+
 
 	// Personaje principal
 	/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
@@ -1602,6 +1674,9 @@ void applicationLoop()
 
 	// Posicionamiento de la fogata
 	modelMatrixFogata = glm::translate(modelMatrixFogata, glm::vec3(0.0, 0.0, 0.0));
+	//posicion venado 
+	modelMatrixVenado=glm::translate(modelMatrixVenado, glm::vec3(-2.5,0,-5));
+	modelMatrixVenado=glm::rotate(modelMatrixVenado,glm::radians(90.0f),glm::vec3(0,1,0));
 
 	// Posicionamiento del personaje principal
 	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, -10.0f));
@@ -2134,6 +2209,36 @@ void applicationLoop()
 				sourcesPlay[i] = false;
 				alSourcePlay(source[i]);
 			}
+		}
+		/**************************MAQUINA DE EDOS VENADO************************************** */
+
+		switch (state){
+		case 0:
+			if(numberAdvance == 0)
+				maxAdvance = 12.0;
+			else if(numberAdvance == 1)
+				maxAdvance = 0.0;
+			state = 1;
+			break;
+		case 1:
+			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0f, 0.0f, avance));
+			advanceCount += avance;
+			if(advanceCount > maxAdvance){
+				advanceCount = 0;
+				numberAdvance++;
+				state = 2;
+			}
+			break;
+		case 2:
+			modelMatrixVenado = glm::translate(modelMatrixVenado, glm::vec3(0.0, 0.0, 0.025f));
+			modelMatrixVenado = glm::scale(modelMatrixVenado,  glm::vec3(0, desaparece, 0));
+				if(numberAdvance > 0)
+					numberAdvance = 1;
+			
+			break;
+		
+		default:
+			break;
 		}
 	}
 }
