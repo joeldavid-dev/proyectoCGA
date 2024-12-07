@@ -116,14 +116,15 @@ bool enableActionKeyL = false;
 // camara primera persona
 bool isFirstPerson = false;
 bool enableActionKeyV = true;
-float yawActual = 0;
-float yawAnterior = 0;
 
 // Maquina de estados general
 int nivel = 0;
 int vidas = 3;
 int alienCount = 0;
 float avanceCount = 0;
+float yawDegreesAlien = 0;
+float yawDegreesCazador = 0;
+int distanciaAparicion = 25;
 std::string infoTexto = "";
 bool estadoActualActivo = false;
 bool controlesActivos = true;
@@ -259,7 +260,7 @@ Model modelUFO;
 glm::mat4 modelMatrixUFO = glm::mat4(1.0f);
 
 // Alien general
-glm::mat4 modelMatrixAlien = glm::mat4(1.0f);
+//glm::mat4 modelMatrixAlien = glm::mat4(1.0f);
 
 // Alien 1
 Model modelAlien1;
@@ -280,7 +281,7 @@ GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textur
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
 GLuint textureInit1ID, textureInit2ID, textureActivaID, texture3vidasID, texture2vidasID, texture1vidaID, textureGameOverID;
-GLuint textureModoCineID;
+GLuint textureModoCineID, textureVictoriaID;
 GLuint crosshairTextureID, crosshairVAO, crosshairVBO;
 
 // Modelo para el render del texto
@@ -315,18 +316,13 @@ std::map<std::string, std::tuple<AbstractModel::OBB, glm::mat4, glm::mat4>> coll
 ALfloat listenerPos[] = { 0.0, 0.0, 4.0 };
 ALfloat listenerVel[] = { 0.0, 0.0, 0.0 };
 ALfloat listenerOri[] = { 0.0, 0.0, 1.0, 0.0, 1.0, 0.0 };
-// Source 0 fuego
+// Source 0 musica
 ALfloat source0Pos[] = { 0.0, 0.0, 0.0 };
 ALfloat source0Vel[] = { 0.0, 0.0, 0.0 };
-// Source 1 rana 1
+// Source 1 disparo
 ALfloat source1Pos[] = { 2.0, 0.0, 0.0 };
 ALfloat source1Vel[] = { 0.0, 0.0, 0.0 };
-/*/ Source 2 rana 2
-ALfloat source2Pos[] = { 4.0, 0.0, 0.0 };
-ALfloat source2Vel[] = { 0.0, 0.0, 0.0 };
-// Source 3 rana 3
-ALfloat source3Pos[] = { -4.0, 0.0, 0.0 };
-ALfloat source3Vel[] = { 0.0, 0.0, 0.0 };*/
+
 // Buffers
 ALuint buffer[NUM_BUFFERS];
 ALuint source[NUM_SOURCES];
@@ -936,6 +932,25 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 		std::cout << "Fallo la carga de textura" << std::endl;
 	textureModoCine.freeImage(); // Liberamos memoria
 
+	// Definiendo la textura
+	Texture textureVictoria("../Textures/victoria.png");
+	textureVictoria.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureVictoriaID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureVictoriaID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureVictoria.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureVictoria.getChannels() == 3 ? GL_RGB : GL_RGBA, textureVictoria.getWidth(), textureVictoria.getHeight(), 0,
+		textureVictoria.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureVictoria.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureVictoria.freeImage(); // Liberamos memoria
+
 	/*******************************************
 	 * OpenAL init
 	 *******************************************/
@@ -954,7 +969,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Generate buffers, or else no sound will happen!
 	alGenBuffers(NUM_BUFFERS, buffer);
 	buffer[0] = alutCreateBufferFromFile("../sounds/Final Target in Sight.wav");
-	buffer[1] = alutCreateBufferFromFile("../sounds/rana.wav");
+	buffer[1] = alutCreateBufferFromFile("../sounds/disparo.wav");
 	int errorAlut = alutGetError();
 	if (errorAlut != ALUT_ERROR_NO_ERROR){
 		printf("- Error open files with alut %d !!\n", errorAlut);
@@ -971,7 +986,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	else {
 		printf("init - no errors after alGenSources\n");
 	}
-	// Configuración de sonido de fuego
+	// Configuración de musica
 	alSourcef(source[0], AL_PITCH, 1.0f);
 	alSourcef(source[0], AL_GAIN, 1.0f);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
@@ -981,31 +996,14 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	alSourcef(source[0], AL_MAX_DISTANCE, 200);
 	alSourcefv(source[0], AL_POSITION, source0Pos);
 
-	// Configuración de sonido de rana 1
+	// Configuración de disparo
 	alSourcef(source[1], AL_PITCH, 1.0f);
 	alSourcef(source[1], AL_GAIN, 1.0f);
 	alSourcefv(source[1], AL_POSITION, source1Pos);
 	alSourcefv(source[1], AL_VELOCITY, source1Vel);
 	alSourcei(source[1], AL_BUFFER, buffer[1]);
-	alSourcei(source[1], AL_LOOPING, AL_TRUE);
+	alSourcei(source[1], AL_LOOPING, AL_FALSE);
 	alSourcef(source[1], AL_MAX_DISTANCE, 200);
-	/*/ Configuración de sonido de rana 2
-	alSourcef(source[2], AL_PITCH, 1.0f);
-	alSourcef(source[2], AL_GAIN, 1.0f);
-	alSourcefv(source[2], AL_POSITION, source2Pos);
-	alSourcefv(source[2], AL_VELOCITY, source2Vel);
-	alSourcei(source[2], AL_BUFFER, buffer[1]);
-	alSourcei(source[2], AL_LOOPING, AL_TRUE);
-	alSourcef(source[2], AL_MAX_DISTANCE, 200);
-	// Configuración de sonido de rana 3
-	alSourcef(source[3], AL_PITCH, 1.0f);
-	alSourcef(source[3], AL_GAIN, 1.0f);
-	alSourcefv(source[3], AL_POSITION, source3Pos);
-	alSourcefv(source[3], AL_VELOCITY, source3Vel);
-	alSourcei(source[3], AL_BUFFER, buffer[1]);
-	alSourcei(source[3], AL_LOOPING, AL_TRUE);
-	alSourcef(source[3], AL_MAX_DISTANCE, 200);*/
-
 }
 
 void destroy()
@@ -1066,6 +1064,7 @@ void destroy()
 	glDeleteTextures(1, &texture1vidaID);
 	glDeleteTextures(1, &textureGameOverID);
 	glDeleteTextures(1, &textureModoCineID);
+	glDeleteTextures(1, &textureVictoriaID);
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -1075,6 +1074,7 @@ void destroy()
 	// OpenAL destroy
 	alDeleteSources(NUM_SOURCES, source);
     alDeleteBuffers(NUM_BUFFERS, buffer);
+	alutExit();
 }
 
 void reshapeCallback(GLFWwindow *Window, int widthRes, int heightRes)
@@ -1130,6 +1130,13 @@ void mouseButtonCallback(GLFWwindow *window, int button, int state, int mod)
 			break;
 		}
 	}
+}
+
+void aparecerAlien() {
+	avanceCount = 0;
+	modelMatrixAlien1[3].x = modelMatrixCazador[3].x + distanciaAparicion; 
+	modelMatrixAlien1[3].z = modelMatrixCazador[3].z;
+	renderizarAlien = true;
 }
 
 bool processInput(bool continueApplication)
@@ -1316,12 +1323,12 @@ bool processInput(bool continueApplication)
 		// Controles del personaje principal con teclado
 		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 		{
-			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.1, 0.0, 0.0));
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.2, 0.0, 0.0));
 			animationIndexCazador = 2;
 		}
 		else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		{
-			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(-0.1, 0.0, 0.0));
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(-0.2, 0.0, 0.0));
 			animationIndexCazador = 2;
 		}
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -1337,9 +1344,33 @@ bool processInput(bool continueApplication)
 			avanceCount += 0.1;
 		}
 		
-		if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+		// Control del disparo
+		if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+		{
+			enableActionKeyF = false;
 			animationIndexCazador = 0;
+			alSourcePlay(source[1]);
+
+			// Obtener el angulo y verificar si esta dentro del rango
+			glm::vec3 direccionCazadorNormalizada = glm::normalize(modelMatrixCazador[2]);
+			float yawCazador = atan2(-direccionCazadorNormalizada.z, -direccionCazadorNormalizada.x);
+			yawDegreesCazador = glm::degrees(yawCazador);
+
+			if (yawDegreesCazador >= yawDegreesAlien -1 && yawDegreesCazador <= yawDegreesAlien + 1){
+				std::cout << "Si le diste ===========================\n";
+				alienCount++;
+				//aparecerAlien();
+				avanceCount = 0;
+				renderizarAlien = false;
+			}
+
 		}
+		else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE)
+		{
+			enableActionKeyF = true;
+		}
+
+		// Salto
 		bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
 		if (!isJump && keySpaceStatus)
 		{
@@ -1470,8 +1501,8 @@ void renderSolidScene(){
 
 	// Renderizado de alien 1
 	if (renderizarAlien){
-		modelMatrixAlien[3][1] = terrain.getHeightTerrain(modelMatrixAlien[3][0], modelMatrixAlien[3][2]);
-		glm::mat4 modelMatrixAlien1Body = glm::mat4(modelMatrixAlien);
+		modelMatrixAlien1[3][1] = terrain.getHeightTerrain(modelMatrixAlien1[3][0], modelMatrixAlien1[3][2]);
+		glm::mat4 modelMatrixAlien1Body = glm::mat4(modelMatrixAlien1);
 		modelMatrixAlien1Body = glm::scale(modelMatrixAlien1Body, glm::vec3(2.0f));
 		modelAlien1.render(modelMatrixAlien1Body);
 	}
@@ -1636,13 +1667,6 @@ void establecerTiempo(int estadoTiempo) {
 	}
 }
 
-void aparecerAlien() {
-	avanceCount = 0;
-	modelMatrixAlien1[3].x = modelMatrixCazador[3].x + 20; 
-	modelMatrixAlien1[3].z = modelMatrixCazador[3].z;
-	renderizarAlien = true;
-}
-
 void applicationLoop()
 {
 	bool psi = true;
@@ -1666,6 +1690,9 @@ void applicationLoop()
 
 	// Posicionamiento de la nave
 	modelMatrixUFO = glm::translate(modelMatrixUFO, glm::vec3(-100.0, 20.0, 0.0));
+
+	// Posicionamiento de aliens
+	modelMatrixAlien1 = glm::translate(modelMatrixAlien1, glm::vec3(10.0, 0.0, 10.0));
 
 	lastTime = TimeManager::Instance().GetTime();
 
@@ -1916,14 +1943,14 @@ void applicationLoop()
 		addOrUpdateColliders(collidersOBB, "fogata", fogataCollider, modelMatrixFogata);
 
 		/*/ Collider del alien 1
-		glm::mat4 colliderMatrixAlien1 = glm::mat4(modelMatrixAlien);
+		glm::mat4 colliderMatrixAlien1 = glm::mat4(modelMatrixAlien1);
 		AbstractModel::OBB alien1Collider;
 		colliderMatrixAlien1 = glm::translate(colliderMatrixAlien1, modelAlien1.getObb().c);
-		colliderMatrixAlien1 = glm::translate(colliderMatrixAlien1, glm::vec3(0.0, 0.8, -0.8));
-		alien1Collider.u = glm::quat_cast(modelMatrixAlien);
+		//colliderMatrixAlien1 = glm::translate(colliderMatrixAlien1, glm::vec3(0.0, 0.8, -0.8));
+		alien1Collider.u = glm::quat_cast(modelMatrixAlien1);
 		alien1Collider.c = colliderMatrixAlien1[3];
 		alien1Collider.e = modelAlien1.getObb().e;
-		addOrUpdateColliders(collidersOBB, "alien", alien1Collider, modelMatrixAlien);*/
+		addOrUpdateColliders(collidersOBB, "alien", alien1Collider, modelMatrixAlien1);*/
 
 		// Collider del personaje principal
 		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
@@ -1934,7 +1961,7 @@ void applicationLoop()
 		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.03, 1.0 , 0.04);
 		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
-		// Colliders de arboles tipo 1
+		/*/ Colliders de arboles tipo 1
 		for (int i = 0; i < arbol1Position.size(); i++)
 		{
 			AbstractModel::OBB arbol1Collider;
@@ -1967,7 +1994,7 @@ void applicationLoop()
 
 			addOrUpdateColliders(collidersOBB, "arbol_otono-" + std::to_string(i), arbolOtonoCollider,
 								 colliderMatrixArbolOt);
-		}
+		}*/
 
 		// Colliders de troncos
 		for (int i = 0; i < troncoPosition.size(); i++)
@@ -2228,7 +2255,7 @@ void applicationLoop()
 		}
 		else if (nivel == 1) {
 			// Nivel 1
-			infoTexto = "Nivel 1. Objetivo: 10 aliens";
+			infoTexto = "NIVEL 1.  Objetivo: 5 aliens.  Conteo: " + std::to_string(alienCount);
 
 			// vidas
 			if (vidas == 3)
@@ -2237,16 +2264,26 @@ void applicationLoop()
 				textureActivaID = texture2vidasID;
 			else if (vidas == 1)
 				textureActivaID = texture1vidaID;
-			else
+			else {
 				textureActivaID = textureGameOverID;
+				controlesActivos = false;
+			}
 
-			if (alienCount < 10){
+			// Muerte
+			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
+			if (distancia < 1){
+				vidas--;
+				aparecerAlien();
+			}
+
+			// Movimiento de alien 5
+			if (alienCount < 1){
 				if (avanceCount > 25){
 					aparecerAlien();
 				}
 				if (renderizarAlien){
 					// Extraer posiciones
-    				glm::vec3 observadorPos = glm::vec3(modelMatrixAlien[3]);
+    				glm::vec3 observadorPos = glm::vec3(modelMatrixAlien1[3]);
     				glm::vec3 objetoPos = glm::vec3(modelMatrixCazador[3]);
 
 					// Calcular la dirección a observar
@@ -2255,19 +2292,148 @@ void applicationLoop()
 					// Corrección para que el personaje no se incline
 					direccionNormalizada.y = 0.0;
 
-					// Avance del alien
-					modelMatrixAlien = glm::translate(modelMatrixAlien, glm::vec3(0.0f, 0.0f, 0.1f));
+					// Avance del alien 1
+					modelMatrixAlien1 = glm::translate(modelMatrixAlien1, glm::vec3(0.0f, 0.0f, 0.1f));
 					// Calcular los otros ejes
 					glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
 					glm::vec3 right = glm::normalize(glm::cross(globalUp, direccionNormalizada));
 					glm::vec3 up = glm::normalize(glm::cross(direccionNormalizada, right));
 
 					// Sobrescribir la matriz de transformación
-					modelMatrixAlien[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
-					modelMatrixAlien[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
-					modelMatrixAlien[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
-					}
-				std::cout << "avanceCount: " << avanceCount << " =========================\n";
+					modelMatrixAlien1[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
+					modelMatrixAlien1[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
+					modelMatrixAlien1[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
+
+					float yawAlien = atan2(direccionNormalizada.z, direccionNormalizada.x); // Ángulo yaw en radianes
+					yawDegreesAlien = glm::degrees(yawAlien);
+				}
+			}
+			else {
+				nivel = 2;
+				alienCount = 0;
+			}
+		}
+		else if (nivel == 2){
+			// Nivel 2
+			infoTexto = "NIVEL 2.  Objetivo: 10 aliens.  Conteo: " + std::to_string(alienCount);
+			distanciaAparicion = 20;
+			establecerTiempo(4);
+
+			// vidas
+			if (vidas == 3)
+				textureActivaID = texture3vidasID;
+			else if (vidas == 2)
+				textureActivaID = texture2vidasID;
+			else if (vidas == 1)
+				textureActivaID = texture1vidaID;
+			else {
+				textureActivaID = textureGameOverID;
+				controlesActivos = false;
+			}
+
+			// Muerte
+			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
+			if (distancia < 1){
+				vidas--;
+				aparecerAlien();
+			}
+
+			// Movimiento de alien 10
+			if (alienCount < 10){
+				if (avanceCount > 25){
+					aparecerAlien();
+				}
+				if (renderizarAlien){
+					// Extraer posiciones
+    				glm::vec3 observadorPos = glm::vec3(modelMatrixAlien1[3]);
+    				glm::vec3 objetoPos = glm::vec3(modelMatrixCazador[3]);
+
+					// Calcular la dirección a observar
+					glm::vec3 direccion = objetoPos - observadorPos;
+					glm::vec3 direccionNormalizada = glm::normalize(direccion);
+					// Corrección para que el personaje no se incline
+					direccionNormalizada.y = 0.0;
+
+					// Avance del alien 1
+					modelMatrixAlien1 = glm::translate(modelMatrixAlien1, glm::vec3(0.0f, 0.0f, 0.1f));
+					// Calcular los otros ejes
+					glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+					glm::vec3 right = glm::normalize(glm::cross(globalUp, direccionNormalizada));
+					glm::vec3 up = glm::normalize(glm::cross(direccionNormalizada, right));
+
+					// Sobrescribir la matriz de transformación
+					modelMatrixAlien1[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
+					modelMatrixAlien1[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
+					modelMatrixAlien1[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
+
+					float yawAlien = atan2(direccionNormalizada.z, direccionNormalizada.x); // Ángulo yaw en radianes
+					yawDegreesAlien = glm::degrees(yawAlien);
+				}
+			}	
+			else {
+				nivel = 3;
+				alienCount = 0;
+			}
+		}
+		else if (nivel = 3){
+			// Nivel 3
+			infoTexto = "NIVEL 3.  Objetivo: 15 aliens.  Conteo: " + std::to_string(alienCount);
+			distanciaAparicion = 10;
+			establecerTiempo(5);
+
+			// vidas
+			if (vidas == 3)
+				textureActivaID = texture3vidasID;
+			else if (vidas == 2)
+				textureActivaID = texture2vidasID;
+			else if (vidas == 1)
+				textureActivaID = texture1vidaID;
+			else {
+				textureActivaID = textureGameOverID;
+				controlesActivos = false;
+			}
+
+			// Muerte
+			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
+			if (distancia < 1){
+				vidas--;
+				aparecerAlien();
+			}
+
+			// Movimiento de alien 15
+			if (alienCount < 15){
+				if (avanceCount > 10){
+					aparecerAlien();
+				}
+				if (renderizarAlien){
+					// Extraer posiciones
+    				glm::vec3 observadorPos = glm::vec3(modelMatrixAlien1[3]);
+    				glm::vec3 objetoPos = glm::vec3(modelMatrixCazador[3]);
+
+					// Calcular la dirección a observar
+					glm::vec3 direccion = objetoPos - observadorPos;
+					glm::vec3 direccionNormalizada = glm::normalize(direccion);
+					// Corrección para que el personaje no se incline
+					direccionNormalizada.y = 0.0;
+
+					// Avance del alien 1
+					modelMatrixAlien1 = glm::translate(modelMatrixAlien1, glm::vec3(0.0f, 0.0f, 0.1f));
+					// Calcular los otros ejes
+					glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+					glm::vec3 right = glm::normalize(glm::cross(globalUp, direccionNormalizada));
+					glm::vec3 up = glm::normalize(glm::cross(direccionNormalizada, right));
+
+					// Sobrescribir la matriz de transformación
+					modelMatrixAlien1[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
+					modelMatrixAlien1[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
+					modelMatrixAlien1[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
+
+					float yawAlien = atan2(direccionNormalizada.z, direccionNormalizada.x); // Ángulo yaw en radianes
+					yawDegreesAlien = glm::degrees(yawAlien);
+				}
+			}	
+			else {
+				textureActivaID = textureVictoriaID;
 			}
 		}
 
@@ -2280,20 +2446,10 @@ void applicationLoop()
 		alSourcefv(source[0], AL_POSITION, source0Pos);
 
 
-		source1Pos[0] = ranaPosition[0].x;
-		source1Pos[1] = ranaPosition[0].y;
-		source1Pos[2] = ranaPosition[0].z;
+		source1Pos[0] = modelMatrixCazador[3].x;
+		source1Pos[1] = modelMatrixCazador[3].y;
+		source1Pos[2] = modelMatrixCazador[3].z;
 		alSourcefv(source[1], AL_POSITION, source1Pos);
-
-		/*source2Pos[0] = ranaPosition[1].x;
-		source2Pos[1] = ranaPosition[1].y;
-		source2Pos[2] = ranaPosition[1].z;
-		alSourcefv(source[2], AL_POSITION, source2Pos);
-
-		source3Pos[0] = ranaPosition[2].x;
-		source3Pos[1] = ranaPosition[2].y;
-		source3Pos[2] = ranaPosition[2].z;
-		alSourcefv(source[3], AL_POSITION, source3Pos);*/
 
 		// Listener for the Thris person camera
 		listenerPos[0] = modelMatrixCazador[3].x;
@@ -2312,11 +2468,9 @@ void applicationLoop()
 		listenerOri[5] = upModel.z;
 		alListenerfv(AL_ORIENTATION, listenerOri);
 
-		for(unsigned int i = 0; i < sourcesPlay.size(); i++){
-			if(sourcesPlay[i]){
-				sourcesPlay[i] = false;
-				alSourcePlay(source[i]);
-			}
+		if(sourcesPlay[0]){
+			sourcesPlay[0] = false;
+			alSourcePlay(source[0]);
 		}
 	}
 }
