@@ -106,8 +106,6 @@ double startTimeJump = 0;
 
 bool isCollidersVisible = false;
 bool enableActionKeyC = false;
-int estadoTiempo = 0;
-bool enableActionKeyT = false;
 glm::vec3 colorAmbiente = glm::vec3(1.0);
 glm::vec3 colorDifuso = glm::vec3(1.0);
 glm::vec3 colorEspecular = glm::vec3(1.0);
@@ -125,12 +123,12 @@ float yawAnterior = 0;
 int nivel = 0;
 int vidas = 3;
 int alienCount = 0;
+float avanceCount = 0;
 std::string infoTexto = "";
 bool estadoActualActivo = false;
 bool controlesActivos = true;
 bool renderizarAlien = false;
 bool renderizarVenado = false;
-bool controlarPersonaje = false;
 
 
 // Definición de los modelos ======================================
@@ -241,6 +239,7 @@ Model modelVenado;
 float advanceCount;
 const float avance = 0.1;
 glm::mat4 modelMatrixVenado = glm::mat4(1.0f);
+
 //Murcielago 
 Model modelMurcielago; 
 std::vector<glm::vec3> murcielagoPosition = {
@@ -248,7 +247,6 @@ std::vector<glm::vec3> murcielagoPosition = {
 };
 //Angulo de orientacion 
 std::vector<float> murcielagoOrientation = {0, 90, 180};
-
 //maquina de edos venado 
 int state;
 int numberAdvance;
@@ -259,6 +257,13 @@ int animationIndexVenado = 1;
 // Nave
 Model modelUFO;
 glm::mat4 modelMatrixUFO = glm::mat4(1.0f);
+
+// Alien general
+glm::mat4 modelMatrixAlien = glm::mat4(1.0f);
+
+// Alien 1
+Model modelAlien1;
+glm::mat4 modelMatrixAlien1 = glm::mat4(1.0f);
 
 // Personaje principal
 Model modelCazador;
@@ -275,6 +280,7 @@ GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textur
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
 GLuint textureInit1ID, textureInit2ID, textureActivaID, texture3vidasID, texture2vidasID, texture1vidaID, textureGameOverID;
+GLuint textureModoCineID;
 GLuint crosshairTextureID, crosshairVAO, crosshairVBO;
 
 // Modelo para el render del texto
@@ -310,7 +316,7 @@ ALfloat listenerPos[] = { 0.0, 0.0, 4.0 };
 ALfloat listenerVel[] = { 0.0, 0.0, 0.0 };
 ALfloat listenerOri[] = { 0.0, 0.0, 1.0, 0.0, 1.0, 0.0 };
 // Source 0 fuego
-ALfloat source0Pos[] = { modelMatrixFogata[3].x, modelMatrixFogata[3].y, modelMatrixFogata[3].z };
+ALfloat source0Pos[] = { 0.0, 0.0, 0.0 };
 ALfloat source0Vel[] = { 0.0, 0.0, 0.0 };
 // Source 1 rana 1
 ALfloat source1Pos[] = { 2.0, 0.0, 0.0 };
@@ -500,6 +506,10 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Nave
 	modelUFO.loadModel("../models/nave/nave.obj");
 	modelUFO.setShader(&shaderMulLighting);
+
+	// alien 1
+	modelAlien1.loadModel("../models/alien1/alien1.fbx");
+	modelAlien1.setShader(&shaderMulLighting);
 
 	// Personaje principal
 	modelCazador.loadModel("../models/swat/Swat.fbx");
@@ -907,6 +917,25 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 		std::cout << "Fallo la carga de textura" << std::endl;
 	textureGameOver.freeImage(); // Liberamos memoria
 
+	// Definiendo la textura
+	Texture textureModoCine("../Textures/modo_cine.png");
+	textureModoCine.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureModoCineID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureModoCineID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureModoCine.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureModoCine.getChannels() == 3 ? GL_RGB : GL_RGBA, textureModoCine.getWidth(), textureModoCine.getHeight(), 0,
+		textureModoCine.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureModoCine.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureModoCine.freeImage(); // Liberamos memoria
+
 	/*******************************************
 	 * OpenAL init
 	 *******************************************/
@@ -924,7 +953,7 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	}
 	// Generate buffers, or else no sound will happen!
 	alGenBuffers(NUM_BUFFERS, buffer);
-	buffer[0] = alutCreateBufferFromFile("../sounds/fire.wav");
+	buffer[0] = alutCreateBufferFromFile("../sounds/Final Target in Sight.wav");
 	buffer[1] = alutCreateBufferFromFile("../sounds/rana.wav");
 	int errorAlut = alutGetError();
 	if (errorAlut != ALUT_ERROR_NO_ERROR){
@@ -1014,6 +1043,7 @@ void destroy()
 	modelMurcielago.destroy();
 	modelCocodrilo.destroy();
 	modelUFO.destroy();
+	modelAlien1.destroy();
 
 	// Terrains objects Delete
 	terrain.destroy();
@@ -1035,6 +1065,7 @@ void destroy()
 	glDeleteTextures(1, &texture2vidasID);
 	glDeleteTextures(1, &texture1vidaID);
 	glDeleteTextures(1, &textureGameOverID);
+	glDeleteTextures(1, &textureModoCineID);
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -1112,7 +1143,7 @@ bool processInput(bool continueApplication)
 		bool presionarEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
 		if(textureActivaID == textureInit1ID && presionarEnter){
 			iniciaPartida = true;
-			textureActivaID = texture3vidasID;
+			textureActivaID = textureModoCineID;
 		}
 		else if (textureActivaID == textureInit2ID && presionarEnter){
 			exitApp = true;
@@ -1182,15 +1213,6 @@ bool processInput(bool continueApplication)
 		// Disparo con gatillo izquierdo (LT)
 		if (axes[4] > 0.5f) {
 			animationIndexCazador = 0; // Animación de disparo
-		}
-
-		// Cambio de tiempo con D-pad (POV)
-		if (buttons[11] == GLFW_PRESS && enableActionKeyT) { // D-pad derecho
-			enableActionKeyT = false;
-			estadoTiempo++;
-			if (estadoTiempo > 5) estadoTiempo = 0;
-		} else if (buttons[11] == GLFW_RELEASE) {
-			enableActionKeyT = true;
 		}
 	}
 
@@ -1290,70 +1312,6 @@ bool processInput(bool continueApplication)
 		{
 			enableActionKeyL = true;
 		}
-
-		// TEMPORAL. Cambiar la iluminación
-		if (enableActionKeyT && glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-		{
-			enableActionKeyT = false;
-
-			switch (estadoTiempo) {
-				case 0:
-				// Iluminación de madrugada
-				colorAmbiente = glm::vec3(0.30, 0.50, 1.00);
-				colorDifuso = glm::vec3(0.3,0.3,0);
-				colorEspecular = glm::vec3(0.3, 0.3, 0.0);
-				direccionLuz = glm::vec3(1,0,0);
-				break;
-				case 1:
-				// Iluminación de mañana
-				colorAmbiente = glm::vec3(0.60, 0.7, 1.0);
-				colorDifuso = glm::vec3(0.5,0.5,0.5);
-				colorEspecular = glm::vec3(0.5, 0.5, 0.5);
-				direccionLuz = glm::vec3(1,-1,0);
-				break;
-				case 2:
-				// Iluminación de medio día
-				colorAmbiente = glm::vec3(0.8, 0.9, 1.0);
-				colorDifuso = glm::vec3(0.8, 0.9, 1.0);
-				colorEspecular = glm::vec3(0.8, 0.9, 1.0);
-				direccionLuz = glm::vec3(0,-1,0);
-				break;
-				case 3:
-				// Iluminación de tarde
-				colorAmbiente = glm::vec3(0.6, 0.6, 0.6);
-				colorDifuso = glm::vec3(0.8,0.8,1);
-				colorEspecular = glm::vec3(0.8, 0.8, 1);
-				direccionLuz = glm::vec3(-1,-1,0);
-				break;
-				case 4:
-				// Iluminación de atardecer
-				colorAmbiente = glm::vec3(0.3, 0.5, 1.0);
-				colorDifuso = glm::vec3(1, 0.4, 0.0);
-				colorEspecular = glm::vec3(1, 0.4, 0);
-				direccionLuz = glm::vec3(-1,0,0);
-				break;
-				case 5:
-				// Iluminación de noche
-				colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
-				colorDifuso = glm::vec3(0.2);
-				colorEspecular = glm::vec3(0.2);
-				direccionLuz = glm::vec3(0,-1,0);
-				break;
-				default:
-				// Iluminación por defecto
-				colorAmbiente = glm::vec3(1);
-				colorDifuso = glm::vec3(1);
-				colorEspecular = glm::vec3(1);
-				direccionLuz = glm::vec3(1);
-				estadoTiempo = -1;
-				break;
-			}
-			estadoTiempo++;
-		}
-		else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE)
-		{
-			enableActionKeyT = true;
-		}
 		
 		// Controles del personaje principal con teclado
 		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
@@ -1368,13 +1326,15 @@ bool processInput(bool continueApplication)
 		}
 		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		{
-			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.3));
 			animationIndexCazador = 2;
+			avanceCount += 0.1;
 		}
 		else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		{
-			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.3));
 			animationIndexCazador = 2;
+			avanceCount += 0.1;
 		}
 		
 		if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
@@ -1508,6 +1468,13 @@ void renderSolidScene(){
 	animationIndexVenado=1;
 	modelVenado.render(modelMatrixVenado);
 
+	// Renderizado de alien 1
+	if (renderizarAlien){
+		modelMatrixAlien[3][1] = terrain.getHeightTerrain(modelMatrixAlien[3][0], modelMatrixAlien[3][2]);
+		glm::mat4 modelMatrixAlien1Body = glm::mat4(modelMatrixAlien);
+		modelMatrixAlien1Body = glm::scale(modelMatrixAlien1Body, glm::vec3(2.0f));
+		modelAlien1.render(modelMatrixAlien1Body);
+	}
 
 	// Personaje principal
 	/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
@@ -1613,6 +1580,67 @@ void renderAlphaScene(bool render = true){
 void renderScene(){
 	renderSolidScene();
 	renderAlphaScene();
+}
+
+void establecerTiempo(int estadoTiempo) {
+	switch (estadoTiempo) {
+		case 0:
+		// Iluminación de madrugada
+		colorAmbiente = glm::vec3(0.30, 0.50, 1.00);
+		colorDifuso = glm::vec3(0.3,0.3,0);
+		colorEspecular = glm::vec3(0.3, 0.3, 0.0);
+		direccionLuz = glm::vec3(1,0,0);
+		break;
+		case 1:
+		// Iluminación de mañana
+		colorAmbiente = glm::vec3(0.60, 0.7, 1.0);
+		colorDifuso = glm::vec3(0.5,0.5,0.5);
+		colorEspecular = glm::vec3(0.5, 0.5, 0.5);
+		direccionLuz = glm::vec3(1,-1,0);
+		break;
+		case 2:
+		// Iluminación de medio día
+		colorAmbiente = glm::vec3(0.8, 0.9, 1.0);
+		colorDifuso = glm::vec3(0.8, 0.9, 1.0);
+		colorEspecular = glm::vec3(0.8, 0.9, 1.0);
+		direccionLuz = glm::vec3(0,-1,0);
+		break;
+		case 3:
+		// Iluminación de tarde
+		colorAmbiente = glm::vec3(0.6, 0.6, 0.6);
+		colorDifuso = glm::vec3(0.8,0.8,1);
+		colorEspecular = glm::vec3(0.8, 0.8, 1);
+		direccionLuz = glm::vec3(-1,-1,0);
+		break;
+		case 4:
+		// Iluminación de atardecer
+		colorAmbiente = glm::vec3(0.3, 0.5, 1.0);
+		colorDifuso = glm::vec3(1, 0.4, 0.0);
+		colorEspecular = glm::vec3(1, 0.4, 0);
+		direccionLuz = glm::vec3(-1,0,0);
+		break;
+		case 5:
+		// Iluminación de noche
+		colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
+		colorDifuso = glm::vec3(0.2);
+		colorEspecular = glm::vec3(0.2);
+		direccionLuz = glm::vec3(0,-1,0);
+		break;
+		default:
+		// Iluminación por defecto
+		colorAmbiente = glm::vec3(1);
+		colorDifuso = glm::vec3(1);
+		colorEspecular = glm::vec3(1);
+		direccionLuz = glm::vec3(1);
+		break;
+	}
+}
+
+void aparecerAlien() {
+	avanceCount = 0;
+	modelMatrixAlien1[3].x = modelMatrixCazador[3].x + 20; 
+	modelMatrixAlien1[3].z = modelMatrixCazador[3].z;
+	renderizarAlien = true;
 }
 
 void applicationLoop()
@@ -1887,13 +1915,23 @@ void applicationLoop()
 		fogataCollider.e = modelFogata.getObb().e;
 		addOrUpdateColliders(collidersOBB, "fogata", fogataCollider, modelMatrixFogata);
 
+		/*/ Collider del alien 1
+		glm::mat4 colliderMatrixAlien1 = glm::mat4(modelMatrixAlien);
+		AbstractModel::OBB alien1Collider;
+		colliderMatrixAlien1 = glm::translate(colliderMatrixAlien1, modelAlien1.getObb().c);
+		colliderMatrixAlien1 = glm::translate(colliderMatrixAlien1, glm::vec3(0.0, 0.8, -0.8));
+		alien1Collider.u = glm::quat_cast(modelMatrixAlien);
+		alien1Collider.c = colliderMatrixAlien1[3];
+		alien1Collider.e = modelAlien1.getObb().e;
+		addOrUpdateColliders(collidersOBB, "alien", alien1Collider, modelMatrixAlien);*/
+
 		// Collider del personaje principal
 		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
 		AbstractModel::OBB cazadorCollider;
 		colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
 		cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
 		cazadorCollider.c = colliderMatrixCazador[3];
-		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.4);
+		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.03, 1.0 , 0.04);
 		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
 		// Colliders de arboles tipo 1
@@ -2147,13 +2185,13 @@ void applicationLoop()
 		/*************************************************************************
 		 * Maquina de estados general. Funcionalidad del juego.
 		 *************************************************************************/
-		switch (nivel){
-		case 0:
+		if (nivel == 0){
 			// Introducción
 			infoTexto = "Introduccion";
 			isFirstPerson = true;
-
 			controlesActivos = false;
+			establecerTiempo(3);
+
 			if (modelMatrixUFO[3].x < 100){
 				// Extraer posiciones
     			glm::vec3 observadorPos = glm::vec3(modelMatrixCazador[3]);
@@ -2180,22 +2218,68 @@ void applicationLoop()
 				modelMatrixCazador[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
 				modelMatrixCazador[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
 
-				// Angulo vertical para que se 
+				// Angulo vertical para la camara
 				camera->setPitch(-pitch);
 			}
 			else {
 				controlesActivos = true;
 				nivel = 1;
 			}
-
-		case 1:
+		}
+		else if (nivel == 1) {
 			// Nivel 1
-			infoTexto = "Nivel 1";
+			infoTexto = "Nivel 1. Objetivo: 10 aliens";
+
+			// vidas
+			if (vidas == 3)
+				textureActivaID = texture3vidasID;
+			else if (vidas == 2)
+				textureActivaID = texture2vidasID;
+			else if (vidas == 1)
+				textureActivaID = texture1vidaID;
+			else
+				textureActivaID = textureGameOverID;
+
+			if (alienCount < 10){
+				if (avanceCount > 25){
+					aparecerAlien();
+				}
+				if (renderizarAlien){
+					// Extraer posiciones
+    				glm::vec3 observadorPos = glm::vec3(modelMatrixAlien[3]);
+    				glm::vec3 objetoPos = glm::vec3(modelMatrixCazador[3]);
+
+					// Calcular la dirección a observar
+					glm::vec3 direccion = objetoPos - observadorPos;
+					glm::vec3 direccionNormalizada = glm::normalize(direccion);
+					// Corrección para que el personaje no se incline
+					direccionNormalizada.y = 0.0;
+
+					// Avance del alien
+					modelMatrixAlien = glm::translate(modelMatrixAlien, glm::vec3(0.0f, 0.0f, 0.1f));
+					// Calcular los otros ejes
+					glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+					glm::vec3 right = glm::normalize(glm::cross(globalUp, direccionNormalizada));
+					glm::vec3 up = glm::normalize(glm::cross(direccionNormalizada, right));
+
+					// Sobrescribir la matriz de transformación
+					modelMatrixAlien[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
+					modelMatrixAlien[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
+					modelMatrixAlien[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
+					}
+				std::cout << "avanceCount: " << avanceCount << " =========================\n";
+			}
 		}
 
 		/****************************+
 		 * OpenAL sound data
 		 ****************************/
+		source0Pos[0] = modelMatrixCazador[3].x;
+		source0Pos[1] = modelMatrixCazador[3].y;
+		source0Pos[2] = modelMatrixCazador[3].z;
+		alSourcefv(source[0], AL_POSITION, source0Pos);
+
+
 		source1Pos[0] = ranaPosition[0].x;
 		source1Pos[1] = ranaPosition[0].y;
 		source1Pos[2] = ranaPosition[0].z;
@@ -2226,18 +2310,6 @@ void applicationLoop()
 		listenerOri[3] = upModel.x;
 		listenerOri[4] = upModel.y;
 		listenerOri[5] = upModel.z;
-
-		// Listener for the First person camera
-		// listenerPos[0] = camera->getPosition().x;
-		// listenerPos[1] = camera->getPosition().y;
-		// listenerPos[2] = camera->getPosition().z;
-		// alListenerfv(AL_POSITION, listenerPos);
-		// listenerOri[0] = camera->getFront().x;
-		// listenerOri[1] = camera->getFront().y;
-		// listenerOri[2] = camera->getFront().z;
-		// listenerOri[3] = camera->getUp().x;
-		// listenerOri[4] = camera->getUp().y;
-		// listenerOri[5] = camera->getUp().z;
 		alListenerfv(AL_ORIENTATION, listenerOri);
 
 		for(unsigned int i = 0; i < sourcesPlay.size(); i++){
