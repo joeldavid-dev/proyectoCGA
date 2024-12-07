@@ -82,7 +82,6 @@ Box boxIntro;
 bool exitApp = false;
 int lastMousePosX, offsetX = 0;
 int lastMousePosY, offsetY = 0;
-int modelSelected = 0; // deprecated
 bool enableCountSelected = true;
 bool enableActionKeyF = true;
 
@@ -119,12 +118,16 @@ bool enableActionKeyL = false;
 // camara primera persona
 bool isFirstPerson = false;
 bool enableActionKeyV = true;
+float yawActual = 0;
+float yawAnterior = 0;
 
 // Maquina de estados general
 int nivel = 0;
 int vidas = 3;
 int alienCount = 0;
 std::string infoTexto = "";
+bool estadoActualActivo = false;
+bool controlesActivos = true;
 bool renderizarAlien = false;
 bool renderizarVenado = false;
 bool controlarPersonaje = false;
@@ -253,6 +256,10 @@ float maxAdvance;
 int desaparece=0;
 int animationIndexVenado = 1;
 
+// Nave
+Model modelUFO;
+glm::mat4 modelMatrixUFO = glm::mat4(1.0f);
+
 // Personaje principal
 Model modelCazador;
 glm::mat4 modelMatrixCazador = glm::mat4(1.0f);
@@ -267,7 +274,7 @@ Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
 GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
-GLuint textureInit1ID, textureInit2ID, textureActivaID, textureScreenID;
+GLuint textureInit1ID, textureInit2ID, textureActivaID, texture3vidasID, texture2vidasID, texture1vidaID, textureGameOverID;
 GLuint crosshairTextureID, crosshairVAO, crosshairVBO;
 
 // Modelo para el render del texto
@@ -482,13 +489,18 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	modelCocodrilo.loadModel("../models/cocodrilo/cocodrilo.fbx");
 	modelCocodrilo.setShader(&shaderMulLighting);
 
-
 	//venado 
 	modelVenado.loadModel("../models/venado/venado.fbx");
 	modelVenado.setShader(&shaderMulLighting);
+
 	//murcielago 
 	modelMurcielago.loadModel("../models/murcielago/murcielago6.fbx");
 	modelMurcielago.setShader(&shaderMulLighting);
+
+	// Nave
+	modelUFO.loadModel("../models/nave/nave.obj");
+	modelUFO.setShader(&shaderMulLighting);
+
 	// Personaje principal
 	modelCazador.loadModel("../models/swat/Swat.fbx");
 	modelCazador.setShader(&shaderMulLighting);
@@ -820,23 +832,80 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	textureIntro2.freeImage(); // Liberamos memoria
 
 	// Definiendo la textura
-	Texture textureScreen("../Textures/Screen.png");
-	textureScreen.loadImage(); // Cargar la textura
-	glGenTextures(1, &textureScreenID); // Creando el id de la textura del landingpad
-	glBindTexture(GL_TEXTURE_2D, textureScreenID); // Se enlaza la textura
+	Texture texture3vidas("../Textures/3vidas.png");
+	texture3vidas.loadImage(); // Cargar la textura
+	glGenTextures(1, &texture3vidasID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, texture3vidasID); // Se enlaza la textura
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
-	if(textureScreen.getData()){
+	if(texture3vidas.getData()){
 		// Transferir los datos de la imagen a la tarjeta
-		glTexImage2D(GL_TEXTURE_2D, 0, textureScreen.getChannels() == 3 ? GL_RGB : GL_RGBA, textureScreen.getWidth(), textureScreen.getHeight(), 0,
-		textureScreen.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureScreen.getData());
+		glTexImage2D(GL_TEXTURE_2D, 0, texture3vidas.getChannels() == 3 ? GL_RGB : GL_RGBA, texture3vidas.getWidth(), texture3vidas.getHeight(), 0,
+		texture3vidas.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, texture3vidas.getData());
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	else 
 		std::cout << "Fallo la carga de textura" << std::endl;
-	textureScreen.freeImage(); // Liberamos memoria
+	texture3vidas.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture texture2vidas("../Textures/2vidas.png");
+	texture2vidas.loadImage(); // Cargar la textura
+	glGenTextures(1, &texture2vidasID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, texture2vidasID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(texture2vidas.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, texture2vidas.getChannels() == 3 ? GL_RGB : GL_RGBA, texture2vidas.getWidth(), texture2vidas.getHeight(), 0,
+		texture2vidas.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, texture2vidas.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	texture2vidas.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture texture1vida("../Textures/1vidas.png");
+	texture1vida.loadImage(); // Cargar la textura
+	glGenTextures(1, &texture1vidaID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, texture1vidaID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(texture1vida.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, texture1vida.getChannels() == 3 ? GL_RGB : GL_RGBA, texture1vida.getWidth(), texture1vida.getHeight(), 0,
+		texture1vida.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, texture1vida.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	texture1vida.freeImage(); // Liberamos memoria
+
+	// Definiendo la textura
+	Texture textureGameOver("../Textures/0vidas.png");
+	textureGameOver.loadImage(); // Cargar la textura
+	glGenTextures(1, &textureGameOverID); // Creando el id de la textura del landingpad
+	glBindTexture(GL_TEXTURE_2D, textureGameOverID); // Se enlaza la textura
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // Wrapping en el eje u
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT); // Wrapping en el eje v
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
+	if(textureGameOver.getData()){
+		// Transferir los datos de la imagen a la tarjeta
+		glTexImage2D(GL_TEXTURE_2D, 0, textureGameOver.getChannels() == 3 ? GL_RGB : GL_RGBA, textureGameOver.getWidth(), textureGameOver.getHeight(), 0,
+		textureGameOver.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureGameOver.getData());
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	else 
+		std::cout << "Fallo la carga de textura" << std::endl;
+	textureGameOver.freeImage(); // Liberamos memoria
 
 	/*******************************************
 	 * OpenAL init
@@ -943,8 +1012,8 @@ void destroy()
 	modelGun.destroy();
 	modelVenado.destroy();
 	modelMurcielago.destroy();
-	
 	modelCocodrilo.destroy();
+	modelUFO.destroy();
 
 	// Terrains objects Delete
 	terrain.destroy();
@@ -962,7 +1031,10 @@ void destroy()
 	glDeleteTextures(1, &textureTerrainBlendMapID);
 	glDeleteTextures(1, &textureInit1ID);
 	glDeleteTextures(1, &textureInit2ID);
-	glDeleteTextures(1, &textureScreenID);
+	glDeleteTextures(1, &texture3vidasID);
+	glDeleteTextures(1, &texture2vidasID);
+	glDeleteTextures(1, &texture1vidaID);
+	glDeleteTextures(1, &textureGameOverID);
 
 	// Cube Maps Delete
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
@@ -1040,7 +1112,7 @@ bool processInput(bool continueApplication)
 		bool presionarEnter = glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS;
 		if(textureActivaID == textureInit1ID && presionarEnter){
 			iniciaPartida = true;
-			textureActivaID = textureScreenID;
+			textureActivaID = texture3vidasID;
 		}
 		else if (textureActivaID == textureInit2ID && presionarEnter){
 			exitApp = true;
@@ -1167,152 +1239,154 @@ bool processInput(bool continueApplication)
 	// ==========================================================================
 
 	// Cambio de cámara de primera o tercera persona
-	if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
-		enableActionKeyV = false;
-		isFirstPerson = !isFirstPerson;
-		if (isFirstPerson) {
-			camera->setDistanceFromTarget(0.0f);
-		} else {
-			camera->setDistanceFromTarget(distanceFromTarget);
+	if (controlesActivos) {
+		if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+			enableActionKeyV = false;
+			isFirstPerson = !isFirstPerson;
+			if (isFirstPerson) {
+				camera->setDistanceFromTarget(0.0f);
+			} else {
+				camera->setDistanceFromTarget(distanceFromTarget);
+			}
 		}
-	}
-	else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
-		enableActionKeyV = true;
-	}
+		else if (glfwGetKey(window, GLFW_KEY_V) == GLFW_RELEASE) {
+			enableActionKeyV = true;
+		}
 
-	// Control con el ratón
-	//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		// Clic izquierdo
-		//camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
+		// Control con el ratón
+		//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+			// Clic izquierdo
+			//camera->mouseMoveCamera(offsetX, 0.0, deltaTime);
+			
+		//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+			// Clic derecho
+			//camera->mouseMoveCamera(0.0, offsetY, deltaTime);
+
+		// Rotación del personaje prinicipal con el movimiento del mouse
+		modelMatrixCazador = glm::rotate(modelMatrixCazador, -offsetX * mouseSensitivity, glm::vec3(0, 1, 0));
+		camera->mouseMoveCamera(0.0, offsetY, deltaTime);
+
+		offsetX = 0;
+		offsetY = 0;
+
+		// Hacer visibles los colliders
+		if (enableActionKeyC && glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+		{
+			enableActionKeyC = false;
+			isCollidersVisible = !isCollidersVisible;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
+		{
+			enableActionKeyC = true;
+		}
+
+		// Activar la linterna
+		if (enableActionKeyL && glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
+		{
+			enableActionKeyL = false;
+			isLampON = !isLampON;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE)
+		{
+			enableActionKeyL = true;
+		}
+
+		// TEMPORAL. Cambiar la iluminación
+		if (enableActionKeyT && glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+		{
+			enableActionKeyT = false;
+
+			switch (estadoTiempo) {
+				case 0:
+				// Iluminación de madrugada
+				colorAmbiente = glm::vec3(0.30, 0.50, 1.00);
+				colorDifuso = glm::vec3(0.3,0.3,0);
+				colorEspecular = glm::vec3(0.3, 0.3, 0.0);
+				direccionLuz = glm::vec3(1,0,0);
+				break;
+				case 1:
+				// Iluminación de mañana
+				colorAmbiente = glm::vec3(0.60, 0.7, 1.0);
+				colorDifuso = glm::vec3(0.5,0.5,0.5);
+				colorEspecular = glm::vec3(0.5, 0.5, 0.5);
+				direccionLuz = glm::vec3(1,-1,0);
+				break;
+				case 2:
+				// Iluminación de medio día
+				colorAmbiente = glm::vec3(0.8, 0.9, 1.0);
+				colorDifuso = glm::vec3(0.8, 0.9, 1.0);
+				colorEspecular = glm::vec3(0.8, 0.9, 1.0);
+				direccionLuz = glm::vec3(0,-1,0);
+				break;
+				case 3:
+				// Iluminación de tarde
+				colorAmbiente = glm::vec3(0.6, 0.6, 0.6);
+				colorDifuso = glm::vec3(0.8,0.8,1);
+				colorEspecular = glm::vec3(0.8, 0.8, 1);
+				direccionLuz = glm::vec3(-1,-1,0);
+				break;
+				case 4:
+				// Iluminación de atardecer
+				colorAmbiente = glm::vec3(0.3, 0.5, 1.0);
+				colorDifuso = glm::vec3(1, 0.4, 0.0);
+				colorEspecular = glm::vec3(1, 0.4, 0);
+				direccionLuz = glm::vec3(-1,0,0);
+				break;
+				case 5:
+				// Iluminación de noche
+				colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
+				colorDifuso = glm::vec3(0.2);
+				colorEspecular = glm::vec3(0.2);
+				direccionLuz = glm::vec3(0,-1,0);
+				break;
+				default:
+				// Iluminación por defecto
+				colorAmbiente = glm::vec3(1);
+				colorDifuso = glm::vec3(1);
+				colorEspecular = glm::vec3(1);
+				direccionLuz = glm::vec3(1);
+				estadoTiempo = -1;
+				break;
+			}
+			estadoTiempo++;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE)
+		{
+			enableActionKeyT = true;
+		}
 		
-	//if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-		// Clic derecho
-		//camera->mouseMoveCamera(0.0, offsetY, deltaTime);
-
-	// Rotación del personaje prinicipal con el movimiento del mouse
-	modelMatrixCazador = glm::rotate(modelMatrixCazador, -offsetX * mouseSensitivity, glm::vec3(0, 1, 0));
-	camera->mouseMoveCamera(0.0, offsetY, deltaTime);
-
-	offsetX = 0;
-	offsetY = 0;
-
-	// Hacer visibles los colliders
-	if (enableActionKeyC && glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
-	{
-		enableActionKeyC = false;
-		isCollidersVisible = !isCollidersVisible;
-	}
-	else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
-	{
-		enableActionKeyC = true;
-	}
-
-	// Activar la linterna
-	if (enableActionKeyL && glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
-	{
-		enableActionKeyL = false;
-		isLampON = !isLampON;
-	}
-	else if (glfwGetKey(window, GLFW_KEY_L) == GLFW_RELEASE)
-	{
-		enableActionKeyL = true;
-	}
-
-	// TEMPORAL. Cambiar la iluminación
-	if (enableActionKeyT && glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-	{
-		enableActionKeyT = false;
-
-		switch (estadoTiempo) {
-			case 0:
-			// Iluminación de madrugada
-			colorAmbiente = glm::vec3(0.30, 0.50, 1.00);
-			colorDifuso = glm::vec3(0.3,0.3,0);
-			colorEspecular = glm::vec3(0.3, 0.3, 0.0);
-			direccionLuz = glm::vec3(1,0,0);
-			break;
-			case 1:
-			// Iluminación de mañana
-			colorAmbiente = glm::vec3(0.60, 0.7, 1.0);
-			colorDifuso = glm::vec3(0.5,0.5,0.5);
-			colorEspecular = glm::vec3(0.5, 0.5, 0.5);
-			direccionLuz = glm::vec3(1,-1,0);
-			break;
-			case 2:
-			// Iluminación de medio día
-			colorAmbiente = glm::vec3(0.8, 0.9, 1.0);
-			colorDifuso = glm::vec3(0.8, 0.9, 1.0);
-			colorEspecular = glm::vec3(0.8, 0.9, 1.0);
-			direccionLuz = glm::vec3(0,-1,0);
-			break;
-			case 3:
-			// Iluminación de tarde
-			colorAmbiente = glm::vec3(0.6, 0.6, 0.6);
-			colorDifuso = glm::vec3(0.8,0.8,1);
-			colorEspecular = glm::vec3(0.8, 0.8, 1);
-			direccionLuz = glm::vec3(-1,-1,0);
-			break;
-			case 4:
-			// Iluminación de atardecer
-			colorAmbiente = glm::vec3(0.3, 0.5, 1.0);
-			colorDifuso = glm::vec3(1, 0.4, 0.0);
-			colorEspecular = glm::vec3(1, 0.4, 0);
-			direccionLuz = glm::vec3(-1,0,0);
-			break;
-			case 5:
-			// Iluminación de noche
-			colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
-			colorDifuso = glm::vec3(0.2);
-			colorEspecular = glm::vec3(0.2);
-			direccionLuz = glm::vec3(0,-1,0);
-			break;
-			default:
-			// Iluminación por defecto
-			colorAmbiente = glm::vec3(1);
-			colorDifuso = glm::vec3(1);
-			colorEspecular = glm::vec3(1);
-			direccionLuz = glm::vec3(1);
-			estadoTiempo = -1;
-			break;
+		// Controles del personaje principal con teclado
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		{
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.1, 0.0, 0.0));
+			animationIndexCazador = 2;
 		}
-		estadoTiempo++;
-	}
-	else if (glfwGetKey(window, GLFW_KEY_T) == GLFW_RELEASE)
-	{
-		enableActionKeyT = true;
-	}
-	
-	// Controles del personaje principal con teclado
-	if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS))
-	{
-		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.1, 0.0, 0.0));
-		animationIndexCazador = 2;
-	}
-	else if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS))
-	{
-		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(-0.1, 0.0, 0.0));
-		animationIndexCazador = 2;
-	}
-	if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS))
-	{
-		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
-		animationIndexCazador = 2;
-	}
-	else if (modelSelected == 0 && (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS))
-	{
-		modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
-		animationIndexCazador = 2;
-	}
-	
-	if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-		animationIndexCazador = 0;
-	}
-	bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-	if (!isJump && keySpaceStatus)
-	{
-		isJump = true;
-		startTimeJump = currTime;
-		tmv = 0;
+		else if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		{
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(-0.1, 0.0, 0.0));
+			animationIndexCazador = 2;
+		}
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		{
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, 0.2));
+			animationIndexCazador = 2;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		{
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.0, -0.2));
+			animationIndexCazador = 2;
+		}
+		
+		if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
+			animationIndexCazador = 0;
+		}
+		bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
+		if (!isJump && keySpaceStatus)
+		{
+			isJump = true;
+			startTimeJump = currTime;
+			tmv = 0;
+		}
 	}
 
 	glfwPollEvents();
@@ -1398,6 +1472,9 @@ void renderSolidScene(){
 		modelTronco.render();
 	}
 
+	// Renderizado de la nave
+	modelUFO.render(modelMatrixUFO);
+
 	/*****************************************
 	 * Objetos animados por huesos
 	 * **************************************/
@@ -1409,25 +1486,21 @@ void renderSolidScene(){
 		modelRana.render();
 	}
 	
-	//renderizado murcielago 
-	// Renderizado de ranas
+	//renderizado murcielago
 	for (int i = 0; i < murcielagoPosition.size(); i++) {
 		murcielagoPosition[i].y = 5.0f;
 		modelMurcielago.setPosition(murcielagoPosition[i]);
 		modelMurcielago.setOrientation(glm::vec3(0, murcielagoOrientation[i], 0));
 		modelMurcielago.render();
 	}
-
 	
 	//renderizado cocodrilo 
-	
 	for (int i = 0; i < cocodriloPosition.size(); i++) {
 		cocodriloPosition[i].y = terrain.getHeightTerrain(cocodriloPosition[i].x, cocodriloPosition[i].z);
 		modelCocodrilo.setPosition(cocodriloPosition[i]);
 		modelCocodrilo.setOrientation(glm::vec3(0, cocodriloOrientation[i], 0));
 		modelCocodrilo.render();
-
-}
+	}
 
 	//venado 
 	modelMatrixVenado[3][1] = terrain.getHeightTerrain(modelMatrixVenado[3][0], modelMatrixVenado[3][2]);
@@ -1533,7 +1606,7 @@ void renderAlphaScene(bool render = true){
 		boxIntro.render();
 		glDisable(GL_BLEND);
 
-		modelText->render(infoTexto, -0.95, 0.9,1,1,1,24);
+		modelText->render(infoTexto, -0.95, 0.85,1,1,1,24);
 	}
 }
 
@@ -1562,6 +1635,9 @@ void applicationLoop()
 
 	// Posicionamiento del personaje principal
 	modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0f, 0.5f, -10.0f));
+
+	// Posicionamiento de la nave
+	modelMatrixUFO = glm::translate(modelMatrixUFO, glm::vec3(-100.0, 20.0, 0.0));
 
 	lastTime = TimeManager::Instance().GetTime();
 
@@ -1604,7 +1680,8 @@ void applicationLoop()
 			
 			// Ajustar el ángulo para que coincida con la dirección de vista
 			glm::vec3 axis = glm::axis(glm::quat_cast(modelMatrixCazador));
-			float angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
+			angleTarget = glm::angle(glm::quat_cast(modelMatrixCazador));
+
 			if (std::isnan(angleTarget))
 				angleTarget = 0.0;
 			if (axis.y < 0)
@@ -2071,10 +2148,49 @@ void applicationLoop()
 		 * Maquina de estados general. Funcionalidad del juego.
 		 *************************************************************************/
 		switch (nivel){
-			case 0:
+		case 0:
 			// Introducción
 			infoTexto = "Introduccion";
-			
+			isFirstPerson = true;
+
+			controlesActivos = false;
+			if (modelMatrixUFO[3].x < 100){
+				// Extraer posiciones
+    			glm::vec3 observadorPos = glm::vec3(modelMatrixCazador[3]);
+    			glm::vec3 objetoPos = glm::vec3(modelMatrixUFO[3]);
+
+				// Calcular la dirección a observar
+				glm::vec3 direccion = objetoPos - observadorPos;
+				glm::vec3 direccionNormalizada = glm::normalize(direccion);
+				// Calcular ángulo vertical
+				float pitch = atan2(direccionNormalizada.y, sqrt(direccionNormalizada.x * direccionNormalizada.x + direccionNormalizada.z * direccionNormalizada.z)); // Pitch en radianes
+				
+				// Corrección para que el personaje no se incline
+				direccionNormalizada.y = 0.0;
+
+				// Avance de la nave
+				modelMatrixUFO = glm::translate(modelMatrixUFO, glm::vec3(0.5f, 0.0f, 0.0f));
+				// Calcular los otros ejes
+				glm::vec3 globalUp = glm::vec3(0.0f, 1.0f, 0.0f);
+				glm::vec3 right = glm::normalize(glm::cross(globalUp, direccionNormalizada));
+				glm::vec3 up = glm::normalize(glm::cross(direccionNormalizada, right));
+
+				// Sobrescribir la matriz de transformación
+				modelMatrixCazador[0] = glm::vec4(right, 0.0f);             // Eje X (Right)
+				modelMatrixCazador[1] = glm::vec4(up, 0.0f);                // Eje Y (Up)
+				modelMatrixCazador[2] = glm::vec4(direccionNormalizada, 0.0f);  // Eje Z (Forward)
+
+				// Angulo vertical para que se 
+				camera->setPitch(-pitch);
+			}
+			else {
+				controlesActivos = true;
+				nivel = 1;
+			}
+
+		case 1:
+			// Nivel 1
+			infoTexto = "Nivel 1";
 		}
 
 		/****************************+

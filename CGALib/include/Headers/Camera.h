@@ -110,6 +110,10 @@ public:
 		this->pitch = anglePitch;
 	}
 
+	void setYaw(float angleYaw) {
+		this->yaw = angleYaw;
+	}
+
 protected:
 	glm::vec3 position;
 	glm::vec3 front;
