@@ -2277,7 +2277,7 @@ void applicationLoop()
 			}
 
 			// Movimiento de alien 5
-			if (alienCount < 1){
+			if (alienCount < 5){
 				if (avanceCount > 25){
 					aparecerAlien();
 				}
