@@ -129,7 +129,7 @@ std::string infoTexto = "";
 bool estadoActualActivo = false;
 bool controlesActivos = true;
 bool renderizarAlien = false;
-bool renderizarVenado = false;
+bool enableActionKeyENTER = false;
 
 
 // Definición de los modelos ======================================
@@ -277,7 +277,7 @@ glm::mat4 modelMatrixGun = glm::mat4(1.0f);
 // Terrain model instance
 Terrain terrain(-1, -1, TERRAIN_SIZE, 8, "../Textures/heightmap.png");
 
-GLuint textureLeavesID, textureWallID, textureWindowID, textureHighwayID, textureLandingPadID;
+GLuint textureLeavesID;
 GLuint textureTerrainRID, textureTerrainGID, textureTerrainBID, textureTerrainBlendMapID;
 GLuint skyboxTextureID;
 GLuint textureInit1ID, textureInit2ID, textureActivaID, texture3vidasID, texture2vidasID, texture1vidaID, textureGameOverID;
@@ -585,39 +585,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 	// Libera la memoria de la textura
 	textureLeves.freeImage();
 
-	// Definiendo la textura a utilizar
-	Texture textureWall("../Textures/whiteWall.jpg");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureWall.loadImage();
-
-
-	// Creando la textura con id 1
-	glGenTextures(1, &textureWallID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureWallID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureWall.getData())
-	{
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, textureWall.getChannels() == 3 ? GL_RGB : GL_RGBA, textureWall.getWidth(), textureWall.getHeight(), 0,
-					 textureWall.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureWall.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureWall.freeImage();
-
 	Texture textureCrosshair("../Textures/objetivo.png");
 	textureCrosshair.loadImage(true); // true para incluir canal alpha
 	glGenTextures(1, &crosshairTextureID);
@@ -635,88 +602,6 @@ void init(int width, int height, std::string strTitle, bool bFullScreen)
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	textureCrosshair.freeImage();
-
-	// Definiendo la textura a utilizar
-	Texture textureWindow("../Textures/ventana.png");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureWindow.loadImage();
-	// Creando la textura con id 1
-	glGenTextures(1, &textureWindowID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureWindowID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureWindow.getData())
-	{
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, textureWindow.getChannels() == 3 ? GL_RGB : GL_RGBA, textureWindow.getWidth(), textureWindow.getHeight(), 0,
-					 textureWindow.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureWindow.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureWindow.freeImage();
-
-	// Definiendo la textura a utilizar
-	Texture textureHighway("../Textures/highway.jpg");
-	// Carga el mapa de bits (FIBITMAP es el tipo de dato de la libreria)
-	textureHighway.loadImage();
-	// Creando la textura con id 1
-	glGenTextures(1, &textureHighwayID);
-	// Enlazar esa textura a una tipo de textura de 2D.
-	glBindTexture(GL_TEXTURE_2D, textureHighwayID);
-	// set the texture wrapping parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// set texture filtering parameters
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	// Verifica si se pudo abrir la textura
-	if (textureHighway.getData())
-	{
-		// Transferis los datos de la imagen a memoria
-		// Tipo de textura, Mipmaps, Formato interno de openGL, ancho, alto, Mipmaps,
-		// Formato interno de la libreria de la imagen, el tipo de dato y al apuntador
-		// a los datos
-		glTexImage2D(GL_TEXTURE_2D, 0, textureHighway.getChannels() == 3 ? GL_RGB : GL_RGBA, textureHighway.getWidth(), textureHighway.getHeight(), 0,
-					 textureHighway.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureHighway.getData());
-		// Generan los niveles del mipmap (OpenGL es el ecargado de realizarlos)
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-		std::cout << "Failed to load texture" << std::endl;
-	// Libera la memoria de la textura
-	textureHighway.freeImage();
-
-	// Definiendo la textura
-	Texture textureLandingPad("../Textures/landingPad.jpg");
-	textureLandingPad.loadImage();									  // Cargar la textura
-	glGenTextures(1, &textureLandingPadID);							  // Creando el id de la textura del landingpad
-	glBindTexture(GL_TEXTURE_2D, textureLandingPadID);				  // Se enlaza la textura
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	  // Wrapping en el eje u
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);	  // Wrapping en el eje v
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Filtering de minimización
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Filtering de maximimizacion
-	if (textureLandingPad.getData())
-	{
-		// Transferir los datos de la imagen a la tarjeta
-		glTexImage2D(GL_TEXTURE_2D, 0, textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, textureLandingPad.getWidth(), textureLandingPad.getHeight(), 0,
-					 textureLandingPad.getChannels() == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, textureLandingPad.getData());
-		glGenerateMipmap(GL_TEXTURE_2D);
-	}
-	else
-		std::cout << "Fallo la carga de textura" << std::endl;
-	textureLandingPad.freeImage(); // Liberamos memoria
 
 	// Defininiendo texturas del mapa de mezclas
 	// Definiendo la textura para rojo
@@ -1049,10 +934,6 @@ void destroy()
 	// Textures Delete
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glDeleteTextures(1, &textureLeavesID);
-	glDeleteTextures(1, &textureWallID);
-	glDeleteTextures(1, &textureWindowID);
-	glDeleteTextures(1, &textureHighwayID);
-	glDeleteTextures(1, &textureLandingPadID);
 	glDeleteTextures(1, &textureTerrainBID);
 	glDeleteTextures(1, &textureTerrainGID);
 	glDeleteTextures(1, &textureTerrainRID);
@@ -1132,11 +1013,38 @@ void mouseButtonCallback(GLFWwindow *window, int button, int state, int mod)
 	}
 }
 
-void aparecerAlien() {
+void posicionarAlien(){
 	avanceCount = 0;
 	modelMatrixAlien1[3].x = modelMatrixCazador[3].x + distanciaAparicion; 
 	modelMatrixAlien1[3].z = modelMatrixCazador[3].z;
+}
+
+void aparecerAlien() {
+	posicionarAlien();
 	renderizarAlien = true;
+}
+
+void checkVidaMuerte() {
+	// vidas
+	if (vidas == 3)
+		textureActivaID = texture3vidasID;
+	else if (vidas == 2)
+		textureActivaID = texture2vidasID;
+	else if (vidas == 1)
+		textureActivaID = texture1vidaID;
+	else {
+		textureActivaID = textureGameOverID;
+		posicionarAlien();
+		renderizarAlien = false;
+		controlesActivos = false;
+	}
+
+	// Muerte
+	float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
+	if (distancia < 1){
+		vidas--;
+		aparecerAlien();
+	}
 }
 
 bool processInput(bool continueApplication)
@@ -1266,9 +1174,26 @@ bool processInput(bool continueApplication)
 		}
 	}
 	// ==========================================================================
-
-	// Cambio de cámara de primera o tercera persona
+	
+	// Tecla ENTER para continuar
+	if (enableActionKeyENTER && glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS)
+	{
+		enableActionKeyENTER = false;
+		// Continuar cuando aparece GAME OVER
+		if (vidas == 0 || nivel == 4){
+			vidas = 3;
+			nivel = 0;
+			avanceCount = 0;
+			alienCount = 0;
+		}
+	}
+	else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE)
+	{
+		enableActionKeyENTER = true;
+	}
+	
 	if (controlesActivos) {
+		// Cambio de cámara de primera o tercera persona
 		if (enableActionKeyV && glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
 			enableActionKeyV = false;
 			isFirstPerson = !isFirstPerson;
@@ -1361,6 +1286,7 @@ bool processInput(bool continueApplication)
 				alienCount++;
 				//aparecerAlien();
 				avanceCount = 0;
+				posicionarAlien();
 				renderizarAlien = false;
 			}
 
@@ -1652,7 +1578,7 @@ void establecerTiempo(int estadoTiempo) {
 		break;
 		case 5:
 		// Iluminación de noche
-		colorAmbiente = glm::vec3(0.04, 0.05, 0.08);
+		colorAmbiente = glm::vec3(0.05, 0.06, 0.09);
 		colorDifuso = glm::vec3(0.2);
 		colorEspecular = glm::vec3(0.2);
 		direccionLuz = glm::vec3(0,-1,0);
@@ -1956,12 +1882,13 @@ void applicationLoop()
 		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
 		AbstractModel::OBB cazadorCollider;
 		colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
+		colliderMatrixCazador = glm::translate(colliderMatrixCazador, glm::vec3(-0.2, 0.0, -0.4));
 		cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
 		cazadorCollider.c = colliderMatrixCazador[3];
-		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.03, 1.0 , 0.04);
+		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.3);
 		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
 
-		/*/ Colliders de arboles tipo 1
+		// Colliders de arboles tipo 1
 		for (int i = 0; i < arbol1Position.size(); i++)
 		{
 			AbstractModel::OBB arbol1Collider;
@@ -1994,7 +1921,7 @@ void applicationLoop()
 
 			addOrUpdateColliders(collidersOBB, "arbol_otono-" + std::to_string(i), arbolOtonoCollider,
 								 colliderMatrixArbolOt);
-		}*/
+		}
 
 		// Colliders de troncos
 		for (int i = 0; i < troncoPosition.size(); i++)
@@ -2088,7 +2015,7 @@ void applicationLoop()
 				}
 			}
 		}
-		// Colision entre rayos
+		/*/ Colision entre rayos
 		glm::mat4 modelMatrixRay = glm::mat4(modelMatrixCazador);
 		modelMatrixRay = glm::translate(modelMatrixRay, glm::vec3(0, 1.2, 0));
 		float maxDistance = 10.0f;
@@ -2144,7 +2071,7 @@ void applicationLoop()
 		{
 			if (testRayOBB(o, t, std::get<0>(itOBBC->second)))
 				std::cout << "Seleccionado el modelo " << itOBBC->first << std::endl;
-		}
+		}*/
 
 		// Para visualizar los colliders.
 		auto it = collidersSBB.begin();
@@ -2257,24 +2184,7 @@ void applicationLoop()
 			// Nivel 1
 			infoTexto = "NIVEL 1.  Objetivo: 5 aliens.  Conteo: " + std::to_string(alienCount);
 
-			// vidas
-			if (vidas == 3)
-				textureActivaID = texture3vidasID;
-			else if (vidas == 2)
-				textureActivaID = texture2vidasID;
-			else if (vidas == 1)
-				textureActivaID = texture1vidaID;
-			else {
-				textureActivaID = textureGameOverID;
-				controlesActivos = false;
-			}
-
-			// Muerte
-			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
-			if (distancia < 1){
-				vidas--;
-				aparecerAlien();
-			}
+			checkVidaMuerte();
 
 			// Movimiento de alien 5
 			if (alienCount < 5){
@@ -2319,24 +2229,7 @@ void applicationLoop()
 			distanciaAparicion = 20;
 			establecerTiempo(4);
 
-			// vidas
-			if (vidas == 3)
-				textureActivaID = texture3vidasID;
-			else if (vidas == 2)
-				textureActivaID = texture2vidasID;
-			else if (vidas == 1)
-				textureActivaID = texture1vidaID;
-			else {
-				textureActivaID = textureGameOverID;
-				controlesActivos = false;
-			}
-
-			// Muerte
-			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
-			if (distancia < 1){
-				vidas--;
-				aparecerAlien();
-			}
+			checkVidaMuerte();
 
 			// Movimiento de alien 10
 			if (alienCount < 10){
@@ -2379,26 +2272,10 @@ void applicationLoop()
 			// Nivel 3
 			infoTexto = "NIVEL 3.  Objetivo: 15 aliens.  Conteo: " + std::to_string(alienCount);
 			distanciaAparicion = 10;
+			isLampON = true;
 			establecerTiempo(5);
 
-			// vidas
-			if (vidas == 3)
-				textureActivaID = texture3vidasID;
-			else if (vidas == 2)
-				textureActivaID = texture2vidasID;
-			else if (vidas == 1)
-				textureActivaID = texture1vidaID;
-			else {
-				textureActivaID = textureGameOverID;
-				controlesActivos = false;
-			}
-
-			// Muerte
-			float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
-			if (distancia < 1){
-				vidas--;
-				aparecerAlien();
-			}
+			checkVidaMuerte();
 
 			// Movimiento de alien 15
 			if (alienCount < 15){
@@ -2434,6 +2311,7 @@ void applicationLoop()
 			}	
 			else {
 				textureActivaID = textureVictoriaID;
+				nivel = 4;
 			}
 		}
 
