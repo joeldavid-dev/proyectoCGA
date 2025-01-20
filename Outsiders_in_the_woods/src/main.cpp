@@ -83,7 +83,7 @@ bool exitApp = false;
 int lastMousePosX, offsetX = 0;
 int lastMousePosY, offsetY = 0;
 bool enableCountSelected = true;
-bool enableActionKeyF = true;
+bool enableActionDisparo = true;
 
 float mouseSensitivity = 0.01f;
 float cameraSensitivity = 0.4f;
@@ -98,23 +98,22 @@ double currTime, lastTime;
 // Inicio de partida
 bool iniciaPartida = false, presionarOpcion = false;
 
-// Variables de salto
-bool isJump = false;
-float GRAVITY = 1.8;
-double tmv = 0;
-double startTimeJump = 0;
-
 bool isCollidersVisible = false;
 bool enableActionKeyC = false;
+bool enableActionKeyL = false;
+bool enableActionKeyN = false;
+bool enableActionKeyE = false;
+bool enableActionKeyB = false;
 glm::vec3 colorAmbiente = glm::vec3(1.0);
 glm::vec3 colorDifuso = glm::vec3(1.0);
 glm::vec3 colorEspecular = glm::vec3(1.0);
 glm::vec3 direccionLuz = glm::vec3(1.0);
 bool isLampON = false;
-bool enableActionKeyL = false;
+bool isEscenarioVisible = true;
+bool isBonesAnimatedObjectsVisible = true;
 
 // camara primera persona
-bool isFirstPerson = false;
+bool isFirstPerson = true;
 bool enableActionKeyV = true;
 
 // Maquina de estados general
@@ -126,10 +125,13 @@ float yawDegreesAlien = 0;
 float yawDegreesCazador = 0;
 int distanciaAparicion = 25;
 std::string infoTexto = "";
+std::string infoDev = "";
 bool estadoActualActivo = false;
 bool controlesActivos = true;
 bool renderizarAlien = false;
 bool enableActionKeyENTER = false;
+bool modoDev = false;
+bool enableActionDev = false;
 
 
 // Definición de los modelos ======================================
@@ -1041,7 +1043,7 @@ void checkVidaMuerte() {
 
 	// Muerte
 	float distancia = glm::distance(glm::vec3(modelMatrixAlien1[3]), glm::vec3(modelMatrixCazador[3]));
-	if (distancia < 1){
+	if (distancia < 1 && modoDev == false){
 		vidas--;
 		aparecerAlien();
 	}
@@ -1059,6 +1061,7 @@ bool processInput(bool continueApplication)
 		if(textureActivaID == textureInit1ID && presionarEnter){
 			iniciaPartida = true;
 			textureActivaID = textureModoCineID;
+			alSourcePlay(source[0]);
 		}
 		else if (textureActivaID == textureInit2ID && presionarEnter){
 			exitApp = true;
@@ -1110,13 +1113,6 @@ bool processInput(bool continueApplication)
 			camera->setDistanceFromTarget(distanceFromTarget);
 		}
 
-		// Salto con botón A (0)
-		/*if (!isJump && buttons[0] == GLFW_PRESS) {
-			isJump = true;
-			tmv = 0;
-			startTimeJump = currTime;
-		}*/
-
 		// Linterna con botón Y (3)
 		if (buttons[3] == GLFW_PRESS && enableActionKeyL) {
 			enableActionKeyL = false;
@@ -1166,12 +1162,6 @@ bool processInput(bool continueApplication)
 			glfwGetJoystickButtons(GLFW_JOYSTICK_1, &buttonCount);
 		if (buttons[0] == GLFW_PRESS)
 			std::cout << "Se presiona boton" << std::endl;
-		if (!isJump && buttons[0] == GLFW_PRESS)
-		{
-			isJump = true;
-			tmv = 0;
-			startTimeJump = currTime;
-		}
 	}
 	// ==========================================================================
 	
@@ -1223,17 +1213,6 @@ bool processInput(bool continueApplication)
 		offsetX = 0;
 		offsetY = 0;
 
-		// Hacer visibles los colliders
-		if (enableActionKeyC && glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
-		{
-			enableActionKeyC = false;
-			isCollidersVisible = !isCollidersVisible;
-		}
-		else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
-		{
-			enableActionKeyC = true;
-		}
-
 		// Activar la linterna
 		if (enableActionKeyL && glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS)
 		{
@@ -1270,9 +1249,9 @@ bool processInput(bool continueApplication)
 		}
 		
 		// Control del disparo
-		if (enableActionKeyF && glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+		if (enableActionDisparo && glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 		{
-			enableActionKeyF = false;
+			enableActionDisparo = false;
 			animationIndexCazador = 0;
 			alSourcePlay(source[1]);
 
@@ -1291,18 +1270,84 @@ bool processInput(bool continueApplication)
 			}
 
 		}
-		else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE)
+		else if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_RELEASE)
 		{
-			enableActionKeyF = true;
+			enableActionDisparo = true;
+		}
+	}
+
+	// Activar modo programador
+	if (enableActionDev && glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	{
+		enableActionDev = false;
+		modoDev = !modoDev;
+		// Detiene la musica si se activa el modo programador o la reproduce si se desactiva.
+		if (modoDev) {
+			alSourcePause(source[0]);
+		} else {
+			alSourcePlay(source[0]);
+		}
+	}
+	else if (glfwGetKey(window, GLFW_KEY_D) == GLFW_RELEASE && glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_RELEASE)
+	{
+		enableActionDev = true;
+	}
+
+	// Controles especiales para el modo programador
+	if (modoDev) {
+		// Elevacion
+		if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, 0.3, 0.0));
 		}
 
-		// Salto
-		bool keySpaceStatus = glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS;
-		if (!isJump && keySpaceStatus)
+		// Hundimiento
+		if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
+			modelMatrixCazador = glm::translate(modelMatrixCazador, glm::vec3(0.0, -0.3, 0.0));
+		}
+
+		// Aumenta el nivel
+		if (enableActionKeyN && glfwGetKey(window, GLFW_KEY_N) == GLFW_PRESS)
 		{
-			isJump = true;
-			startTimeJump = currTime;
-			tmv = 0;
+			enableActionKeyN = false;
+			nivel++;
+			if (nivel == 4) nivel = 0;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_N) == GLFW_RELEASE)
+		{
+			enableActionKeyN = true;
+		}
+
+		// Hacer visibles los colliders
+		if (enableActionKeyC && glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+		{
+			enableActionKeyC = false;
+			isCollidersVisible = !isCollidersVisible;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_C) == GLFW_RELEASE)
+		{
+			enableActionKeyC = true;
+		}
+
+		// Renderizar escenario solido
+		if (enableActionKeyE && glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		{
+			enableActionKeyE = false;
+			isEscenarioVisible = !isEscenarioVisible;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE)
+		{
+			enableActionKeyE = true;
+		}
+
+		// Renderizar objetos animados con huesos
+		if (enableActionKeyB && glfwGetKey(window, GLFW_KEY_B) == GLFW_PRESS)
+		{
+			enableActionKeyB = false;
+			isBonesAnimatedObjectsVisible = !isBonesAnimatedObjectsVisible;
+		}
+		else if (glfwGetKey(window, GLFW_KEY_B) == GLFW_RELEASE)
+		{
+			enableActionKeyB = true;
 		}
 	}
 
@@ -1343,51 +1388,48 @@ void renderSolidScene(){
 	// Forze to enable the unit texture to 0 always ----------------- IMPORTANT
 	glActiveTexture(GL_TEXTURE0);
 
+	if (isEscenarioVisible) {
+		// Renderizado de arboles tipo 1
+		for (int i = 0; i < arbol1Position.size(); i++)
+		{
+			arbol1Position[i].y = terrain.getHeightTerrain(arbol1Position[i].x, arbol1Position[i].z);
+			modelArbol1.setPosition(arbol1Position[i]);
+			// modelArbol1.setOrientation(glm::vec3(0, 0, 0));
+			modelArbol1.render();
+		}
+
+		// Renderizado de arboles otoño
+		for (int i = 0; i < arbolOtonoPosition.size(); i++){
+			arbolOtonoPosition[i].y = terrain.getHeightTerrain(arbolOtonoPosition[i].x, arbolOtonoPosition[i].z);
+			modelArbolOtono.setPosition(arbolOtonoPosition[i]);
+			modelArbolOtono.render();
+		}
+
+		// Renderizado de plantas acuaticas
+		for (int i = 0; i < plantaPosition.size(); i++){
+			plantaPosition[i].y = terrain.getHeightTerrain(plantaPosition[i].x, plantaPosition[i].z);
+			modelPlanta.setPosition(plantaPosition[i]);
+			modelPlanta.render();
+		}
+
+		// Renderizado de yerbas
+		for (int i = 0; i < yerbaPosition.size(); i++){
+			yerbaPosition[i].y = terrain.getHeightTerrain(yerbaPosition[i].x, yerbaPosition[i].z);
+			modelYerba.setPosition(yerbaPosition[i]);
+			modelYerba.render();
+		}
+
+		// Renderizado de troncos
+		for (int i = 0; i < troncoPosition.size(); i++){
+			troncoPosition[i].y = terrain.getHeightTerrain(troncoPosition[i].x, troncoPosition[i].z);
+			modelTronco.setPosition(troncoPosition[i]);
+			modelTronco.setOrientation(glm::vec3(0, troncoOrientation[i], 0));
+			modelTronco.render();
+		}
+	}
 	// Renderizado de la casa de campaña
 	modelMatrixCasaCamp[3][1] = terrain.getHeightTerrain(modelMatrixCasaCamp[3][0], modelMatrixCasaCamp[3][2]);
 	modelCasaCamp.render(modelMatrixCasaCamp);
-
-	// Renderizado de la fogata
-	modelMatrixFogata[3][1] = terrain.getHeightTerrain(modelMatrixFogata[3][1], modelMatrixFogata[3][2]);
-	modelFogata.render(modelMatrixFogata);
-
-	// Renderizado de arboles tipo 1
-	for (int i = 0; i < arbol1Position.size(); i++)
-	{
-		arbol1Position[i].y = terrain.getHeightTerrain(arbol1Position[i].x, arbol1Position[i].z);
-		modelArbol1.setPosition(arbol1Position[i]);
-		// modelArbol1.setOrientation(glm::vec3(0, 0, 0));
-		modelArbol1.render();
-	}
-
-	// Renderizado de arboles otoño
-	for (int i = 0; i < arbolOtonoPosition.size(); i++){
-		arbolOtonoPosition[i].y = terrain.getHeightTerrain(arbolOtonoPosition[i].x, arbolOtonoPosition[i].z);
-		modelArbolOtono.setPosition(arbolOtonoPosition[i]);
-		modelArbolOtono.render();
-	}
-
-	// Renderizado de plantas acuaticas
-	for (int i = 0; i < plantaPosition.size(); i++){
-		plantaPosition[i].y = terrain.getHeightTerrain(plantaPosition[i].x, plantaPosition[i].z);
-		modelPlanta.setPosition(plantaPosition[i]);
-		modelPlanta.render();
-	}
-
-	// Renderizado de yerbas
-	for (int i = 0; i < yerbaPosition.size(); i++){
-		yerbaPosition[i].y = terrain.getHeightTerrain(yerbaPosition[i].x, yerbaPosition[i].z);
-		modelYerba.setPosition(yerbaPosition[i]);
-		modelYerba.render();
-	}
-
-	// Renderizado de troncos
-	for (int i = 0; i < troncoPosition.size(); i++){
-		troncoPosition[i].y = terrain.getHeightTerrain(troncoPosition[i].x, troncoPosition[i].z);
-		modelTronco.setPosition(troncoPosition[i]);
-		modelTronco.setOrientation(glm::vec3(0, troncoOrientation[i], 0));
-		modelTronco.render();
-	}
 
 	// Renderizado de la nave
 	modelUFO.render(modelMatrixUFO);
@@ -1395,44 +1437,49 @@ void renderSolidScene(){
 	/*****************************************
 	 * Objetos animados por huesos
 	 * **************************************/
-	// Renderizado de ranas
-	for (int i = 0; i < ranaPosition.size(); i++) {
-		ranaPosition[i].y = terrain.getHeightTerrain(ranaPosition[i].x, ranaPosition[i].z);
-		modelRana.setPosition(ranaPosition[i]);
-		modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
-		modelRana.render();
-	}
-	
-	//renderizado murcielago
-	for (int i = 0; i < murcielagoPosition.size(); i++) {
-		murcielagoPosition[i].y = 5.0f;
-		modelMurcielago.setPosition(murcielagoPosition[i]);
-		modelMurcielago.setOrientation(glm::vec3(0, murcielagoOrientation[i], 0));
-		modelMurcielago.render();
-	}
-	
-	//renderizado cocodrilo 
-	for (int i = 0; i < cocodriloPosition.size(); i++) {
-		cocodriloPosition[i].y = terrain.getHeightTerrain(cocodriloPosition[i].x, cocodriloPosition[i].z);
-		modelCocodrilo.setPosition(cocodriloPosition[i]);
-		modelCocodrilo.setOrientation(glm::vec3(0, cocodriloOrientation[i], 0));
-		modelCocodrilo.render();
-	}
+	if (isBonesAnimatedObjectsVisible) {
+		// Renderizado de la fogata
+		modelMatrixFogata[3][1] = terrain.getHeightTerrain(modelMatrixFogata[3][1], modelMatrixFogata[3][2]);
+		modelFogata.render(modelMatrixFogata);
 
-	//venado 
-	modelMatrixVenado[3][1] = terrain.getHeightTerrain(modelMatrixVenado[3][0], modelMatrixVenado[3][2]);
-	modelVenado.setAnimationIndex(animationIndexVenado);
-	animationIndexVenado=1;
-	modelVenado.render(modelMatrixVenado);
+		// Renderizado de ranas
+		for (int i = 0; i < ranaPosition.size(); i++) {
+			ranaPosition[i].y = terrain.getHeightTerrain(ranaPosition[i].x, ranaPosition[i].z);
+			modelRana.setPosition(ranaPosition[i]);
+			modelRana.setOrientation(glm::vec3(0, ranaOrientation[i], 0));
+			modelRana.render();
+		}
+		
+		//renderizado murcielago
+		for (int i = 0; i < murcielagoPosition.size(); i++) {
+			murcielagoPosition[i].y = 5.0f;
+			modelMurcielago.setPosition(murcielagoPosition[i]);
+			modelMurcielago.setOrientation(glm::vec3(0, murcielagoOrientation[i], 0));
+			modelMurcielago.render();
+		}
+		
+		//renderizado cocodrilo 
+		for (int i = 0; i < cocodriloPosition.size(); i++) {
+			cocodriloPosition[i].y = terrain.getHeightTerrain(cocodriloPosition[i].x, cocodriloPosition[i].z);
+			modelCocodrilo.setPosition(cocodriloPosition[i]);
+			modelCocodrilo.setOrientation(glm::vec3(0, cocodriloOrientation[i], 0));
+			modelCocodrilo.render();
+		}
 
-	// Renderizado de alien 1
-	if (renderizarAlien){
-		modelMatrixAlien1[3][1] = terrain.getHeightTerrain(modelMatrixAlien1[3][0], modelMatrixAlien1[3][2]);
-		glm::mat4 modelMatrixAlien1Body = glm::mat4(modelMatrixAlien1);
-		modelMatrixAlien1Body = glm::scale(modelMatrixAlien1Body, glm::vec3(2.0f));
-		modelAlien1.render(modelMatrixAlien1Body);
+		//venado 
+		modelMatrixVenado[3][1] = terrain.getHeightTerrain(modelMatrixVenado[3][0], modelMatrixVenado[3][2]);
+		modelVenado.setAnimationIndex(animationIndexVenado);
+		animationIndexVenado=1;
+		modelVenado.render(modelMatrixVenado);
+
+		// Renderizado de alien 1
+		if (renderizarAlien){
+			modelMatrixAlien1[3][1] = terrain.getHeightTerrain(modelMatrixAlien1[3][0], modelMatrixAlien1[3][2]);
+			glm::mat4 modelMatrixAlien1Body = glm::mat4(modelMatrixAlien1);
+			modelMatrixAlien1Body = glm::scale(modelMatrixAlien1Body, glm::vec3(2.0f));
+			modelAlien1.render(modelMatrixAlien1Body);
+		}
 	}
-
 	// Personaje principal
 	/*glm::vec3 ejey = glm::normalize(terrain.getNormalTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]));
 	glm::vec3 ejex = glm::vec3(modelMatrixCazador[0]);
@@ -1441,49 +1488,12 @@ void renderSolidScene(){
 	modelMatrixCazador[0] = glm::vec4(ejex, 0.0);
 	modelMatrixCazador[1] = glm::vec4(ejey, 0.0);
 	modelMatrixCazador[2] = glm::vec4(ejez, 0.0);*/
-	modelMatrixCazador[3][1] = -GRAVITY * tmv * tmv + 3.0 * tmv +
-								terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
-	tmv = currTime - startTimeJump; // Incrementa el tmv desde que inicio.
-	if (modelMatrixCazador[3][1] < terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]))
-	{
-		isJump = false;
-		modelMatrixCazador[3][1] = terrain.getHeightTerrain(
-			modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
+	if (modoDev == false) {
+		modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
 	}
-	modelMatrixCazador[3][1] = terrain.getHeightTerrain(modelMatrixCazador[3][0], modelMatrixCazador[3][2]);
 	modelCazador.setAnimationIndex(animationIndexCazador);
 	modelCazador.render(modelMatrixCazador);
 	animationIndexCazador = 1;
-
-	float gunOffsetX = 0.12f;    // Ajuste lateral
-	float gunOffsetY = 1.5f;     // Ajuste de altura
-	float gunOffsetZ = 0.2f;     // Ajuste frontal
-	float gunRotateY = 90.0f;    // Rotación horizontal
-	float gunRotateX = -15.0f;   // Inclinación
-	float gunScale = 0.02f;      // Escala
-	/*
-	glm::mat4 modelMatrixGun = glm::mat4(modelMatrixCazador);
-	modelMatrixGun = glm::translate(modelMatrixGun, glm::vec3(gunOffsetX, gunOffsetY, gunOffsetZ));
-	modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateY), glm::vec3(0, 1, 0));
-	modelMatrixGun = glm::rotate(modelMatrixGun, glm::radians(gunRotateX), glm::vec3(1, 0, 0));
-	modelMatrixGun = glm::scale(modelMatrixGun, glm::vec3(gunScale));
-
-	//modelGun.render(modelMatrixGun);
-	/*modelMatrixCowboy[3][1] = terrain.getHeightTerrain(modelMatrixCowboy[3][0], modelMatrixCowboy[3][2]);
-	glm::mat4 modelMatrixCowboyBody = glm::mat4(modelMatrixCowboy);
-	modelMatrixCowboyBody = glm::scale(modelMatrixCowboyBody, glm::vec3(0.0021f));
-	cowboyModelAnimate.render(modelMatrixCowboyBody);*/
-
-	/*modelMatrixGuardian[3][1] = terrain.getHeightTerrain(modelMatrixGuardian[3][0], modelMatrixGuardian[3][2]);
-	glm::mat4 modelMatrixGuardianBody = glm::mat4(modelMatrixGuardian);
-	modelMatrixGuardianBody = glm::scale(modelMatrixGuardianBody, glm::vec3(0.04f));
-	guardianModelAnimate.render(modelMatrixGuardianBody);*/
-
-	/*modelMatrixCyborg[3][1] = terrain.getHeightTerrain(modelMatrixCyborg[3][0], modelMatrixCyborg[3][2]);
-	glm::mat4 modelMatrixCyborgBody = glm::mat4(modelMatrixCyborg);
-	modelMatrixCyborgBody = glm::scale(modelMatrixCyborgBody, glm::vec3(0.009f));
-	cyborgModelAnimate.setAnimationIndex(1);
-	cyborgModelAnimate.render(modelMatrixCyborgBody);*/
 
 	/*******************************************
 	 * Skybox
@@ -1530,7 +1540,14 @@ void renderAlphaScene(bool render = true){
 		boxIntro.render();
 		glDisable(GL_BLEND);
 
-		modelText->render(infoTexto, -0.95, 0.85,1,1,1,24);
+		// Texto mostrado en el juego
+		if (modoDev) {
+			infoDev = "Modo programador. Pos: "+ std::to_string(modelMatrixCazador[3].x) + " , " + std::to_string(modelMatrixCazador[3].y) + " , " + std::to_string(modelMatrixCazador[3].z);
+			infoDev += " Nivel: " + std::to_string(nivel);
+			modelText->render(infoDev, -0.95, 0.85,1,1,1,18);
+		} else {
+			modelText->render(infoTexto, -0.95, 0.85,1,1,1,24);
+		}
 	}
 }
 
@@ -1879,14 +1896,16 @@ void applicationLoop()
 		addOrUpdateColliders(collidersOBB, "alien", alien1Collider, modelMatrixAlien1);*/
 
 		// Collider del personaje principal
-		glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
-		AbstractModel::OBB cazadorCollider;
-		colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
-		colliderMatrixCazador = glm::translate(colliderMatrixCazador, glm::vec3(-0.2, 0.0, -0.4));
-		cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
-		cazadorCollider.c = colliderMatrixCazador[3];
-		cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.3);
-		addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
+		if (modoDev == false) {
+			glm::mat4 colliderMatrixCazador = glm::mat4(modelMatrixCazador);
+			AbstractModel::OBB cazadorCollider;
+			colliderMatrixCazador = glm::translate(colliderMatrixCazador, modelCazador.getObb().c);
+			colliderMatrixCazador = glm::translate(colliderMatrixCazador, glm::vec3(-0.2, 0.0, -0.4));
+			cazadorCollider.u = glm::quat_cast(modelMatrixCazador);
+			cazadorCollider.c = colliderMatrixCazador[3];
+			cazadorCollider.e = modelCazador.getObb().e * glm::vec3(0.3, 1.0 , 0.3);
+			addOrUpdateColliders(collidersOBB, "cazador", cazadorCollider, modelMatrixCazador);
+		}
 
 		// Colliders de arboles tipo 1
 		for (int i = 0; i < arbol1Position.size(); i++)
@@ -2142,7 +2161,6 @@ void applicationLoop()
 		if (nivel == 0){
 			// Introducción
 			infoTexto = "Introduccion";
-			isFirstPerson = true;
 			controlesActivos = false;
 			establecerTiempo(3);
 
@@ -2346,10 +2364,10 @@ void applicationLoop()
 		listenerOri[5] = upModel.z;
 		alListenerfv(AL_ORIENTATION, listenerOri);
 
-		if(sourcesPlay[0]){
-			sourcesPlay[0] = false;
+		// Reproducción
+		/*if(modoDev){
 			alSourcePlay(source[0]);
-		}
+		}*/
 	}
 }
 
